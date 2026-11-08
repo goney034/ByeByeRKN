@@ -1,0 +1,85 @@
+name: Release
+
+# Push a tag like v0.1.0 to build a signed release APK and publish it as a GitHub Release.
+# Needs these repository secrets (Settings > Secrets and variables > Actions):
+#   KEYSTORE_BASE64    the release keystore, base64-encoded in one line
+#   KEYSTORE_PASSWORD  its password (also used as the key password)
+#   KEY_ALIAS          the key alias
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          for v in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS; do
+            if [ -z "${!v}" ]; then echo "::error::Missing repository secret $v"; exit 1; fi
+          done
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Make sure Android platform 36 is installed
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" || true
+
+      - name: Prepare signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          mkdir -p keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > keystore/release.jks
+          {
+            echo "storeFile=keystore/release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEYSTORE_PASSWORD"
+          } > keystore.properties
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Verify signature and name the file
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          "$APKSIGNER" verify --print-certs "$APK"
+          cp "$APK" "ByeByeRKN-fa-${GITHUB_REF_NAME}.apk"
+          sha256sum "ByeByeRKN-fa-${GITHUB_REF_NAME}.apk" | tee "ByeByeRKN-fa-${GITHUB_REF_NAME}.apk.sha256"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(cut -d' ' -f1 "ByeByeRKN-fa-${GITHUB_REF_NAME}.apk.sha256")
+          cat > notes.md <<EOF
+          نسخه‌ی فارسی (بتا) از [ByeByeRKN](https://github.com/alexus282/ByeByeRKN). این نسخه‌ی رسمی نیست و یک فورک تغییریافته است.
+
+          Persian-translated fork of [alexus282/ByeByeRKN](https://github.com/alexus282/ByeByeRKN). Not the official build.
+
+          SHA-256: \`$SHA\`
+          EOF
+          gh release create "$GITHUB_REF_NAME" \
+            "ByeByeRKN-fa-${GITHUB_REF_NAME}.apk" \
+            "ByeByeRKN-fa-${GITHUB_REF_NAME}.apk.sha256" \
+            --title "ByeByeRKN فارسی $GITHUB_REF_NAME (بتا)" \
+            --notes-file notes.md

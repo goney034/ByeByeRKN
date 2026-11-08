@@ -9,3 +9,7 @@ keystore.properties
 *.iml
 captures/
 build.ps1
+
+# Never commit signing keys
+keystore/
+*.jks
