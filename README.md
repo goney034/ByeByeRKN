@@ -11,6 +11,8 @@
   <a href="https://github.com/alexus282/ByeByeRKN"><img src="https://img.shields.io/github/languages/code-size/alexus282/ByeByeRKN?color=blue" alt="code size"></a>
 </p>
 
+[فارسی](README.fa.md)
+
 Android-клиент Cloudflare WARP на базе протокола AmneziaWG. Всё работает через одну кнопку: приложение само
 регистрируется в WARP, подбирает сервер и параметры соединения, а при сбое или смене сети переподключается без участия
 пользователя.

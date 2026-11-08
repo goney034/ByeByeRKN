@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,6 +32,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.dostup.app.DostupApp
 import com.dostup.app.R
 import top.yukonga.miuix.kmp.basic.NavigationBar
@@ -53,8 +56,11 @@ class MainActivity : ComponentActivity() {
         connectRequested = savedInstanceState == null && isConnectRequest(intent)
         val app = DostupApp.instance
         setContent {
-            DostupTheme {
-                DostupRoot(app, connectRequested) { connectRequested = false }
+            // The UI is Persian only, so the layout is always right-to-left, whatever the system language is.
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                DostupTheme {
+                    DostupRoot(app, connectRequested) { connectRequested = false }
+                }
             }
         }
     }
