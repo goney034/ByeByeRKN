@@ -57,7 +57,17 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           mkdir -p keystore
-          echo "$KEYSTORE_BASE64" | base64 -d > keystore/release.jks
+          # Drop spaces, quotes and line breaks that can sneak in when the secret is pasted.
+          printf '%s' "$KEYSTORE_BASE64" | tr -d ' \t\r\n"'"'"'' > keystore/release.b64
+          if ! base64 -d keystore/release.b64 > keystore/release.jks 2> keystore/b64.err; then
+            echo "::error::KEYSTORE_BASE64 is not valid base64 (length $(wc -c < keystore/release.b64)). Paste the whole content of release.jks.b64 again."
+            exit 1
+          fi
+          rm -f keystore/release.b64 keystore/b64.err
+          if ! keytool -list -keystore keystore/release.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
+            echo "::error::The keystore opened badly: check KEYSTORE_PASSWORD and KEY_ALIAS, or that KEYSTORE_BASE64 is complete."
+            exit 1
+          fi
           {
             echo "storeFile=keystore/release.jks"
             echo "storePassword=$KEYSTORE_PASSWORD"
