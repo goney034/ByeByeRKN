@@ -74,12 +74,12 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
     fun withConfig(action: (String) -> Unit) {
         scope.launch {
             val text = runCatching { withContext(Dispatchers.IO) { vpn.exportConfig() } }
-            text.onSuccess(action).onFailure { toast(context, "Не удалось получить конфиг: ${it.message}") }
+            text.onSuccess(action).onFailure { toast(context, "دریافت کانفیگ ناموفق بود: ${it.message}") }
         }
     }
 
     Column(Modifier.fillMaxSize().background(Palette.bgBase)) {
-        TopAppBar(title = "Настройки", scrollBehavior = scrollBehavior)
+        TopAppBar(title = "تنظیمات", scrollBehavior = scrollBehavior)
         LazyColumn(
             Modifier.fillMaxSize().overScrollVertical().nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 32.dp),
@@ -88,13 +88,13 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                 item {
                     SectionCard(Modifier.padding(top = 12.dp)) {
                         BasicComponent(
-                            title = "Используется свой конфиг",
-                            summary = "WARP, маскировка и подбор сервера отключены",
+                            title = "کانفیگ سفارشی در حال استفاده است",
+                            summary = "WARP، پنهان‌سازی و انتخاب سرور غیرفعال هستند",
                             insideMargin = RowMargin,
                         )
                         RowDivider()
                         SuperArrow(
-                            title = "Вернуться к WARP",
+                            title = "بازگشت به WARP",
                             titleColor = BasicComponentDefaults.titleColor(color = Palette.brand),
                             insideMargin = RowMargin,
                             onClick = {
@@ -107,48 +107,48 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
             }
 
             item {
-                SectionTitle("Шторка уведомлений")
+                SectionTitle("پرده‌ی اعلان‌ها")
                 SectionCard {
                     SuperArrow(
-                        title = "Плитка «ByeByeRKN»",
-                        summary = if (tileAdded) "Добавлена в шторку" else "Добавить в панель быстрых настроек",
+                        title = "کاشی «ByeByeRKN»",
+                        summary = if (tileAdded) "به پرده‌ی اعلان اضافه شد" else "افزودن به پنل تنظیمات سریع",
                         insideMargin = RowMargin,
                         onClick = {
                             if (tileAdded) return@SuperArrow
                             val asked = ToggleTileService.requestAdd(context) { added ->
                                 tileAdded = added
-                                if (added) toast(context, "Плитка добавлена в шторку")
+                                if (added) toast(context, "کاشی به پرده‌ی اعلان اضافه شد")
                             }
-                            if (!asked) toast(context, "Откройте шторку, нажмите карандаш и перетащите плитку «ByeByeRKN» в панель")
+                            if (!asked) toast(context, "پرده‌ی اعلان را باز کنید، روی مداد بزنید و کاشی «ByeByeRKN» را به پنل بکشید")
                         },
                     )
                 }
             }
 
             item {
-                SectionTitle("Конфиг для AmneziaWG")
+                SectionTitle("کانفیگ برای AmneziaWG")
                 SectionCard {
                     SuperArrow(
-                        title = "Поделиться конфигом",
-                        summary = "Файл byebyerkn.conf",
+                        title = "اشتراک‌گذاری کانفیگ",
+                        summary = "فایل byebyerkn.conf",
                         insideMargin = RowMargin,
                         onClick = { withConfig { shareConfig(context, it) } },
                     )
                     RowDivider()
                     SuperArrow(
-                        title = "Скопировать конфиг",
+                        title = "کپی کانفیگ",
                         insideMargin = RowMargin,
                         onClick = {
                             withConfig {
                                 copyToClipboard(context, it)
-                                toast(context, "Конфиг скопирован")
+                                toast(context, "کانفیگ کپی شد")
                             }
                         },
                     )
                     RowDivider()
                     SuperArrow(
-                        title = "Импортировать из буфера",
-                        summary = "Свой сервер вместо WARP",
+                        title = "وارد کردن از کلیپ‌بورد",
+                        summary = "سرور شخصی به‌جای WARP",
                         insideMargin = RowMargin,
                         onClick = {
                             val text = readClipboard(context)
@@ -158,7 +158,7 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                             } else {
                                 store.customConfig = text
                                 customConfig = text
-                                toast(context, "Конфиг импортирован")
+                                toast(context, "کانفیگ وارد شد")
                             }
                         },
                     )
@@ -166,11 +166,11 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
             }
 
             item {
-                SectionTitle("Для опытных")
+                SectionTitle("برای کاربران حرفه‌ای")
                 SectionCard {
                     SuperArrow(
-                        title = if (showAdvanced) "Скрыть ручные настройки" else "Показать ручные настройки",
-                        summary = "Обычно не нужны: приложение подбирает всё само",
+                        title = if (showAdvanced) "پنهان کردن تنظیمات دستی" else "نمایش تنظیمات دستی",
+                        summary = "معمولاً لازم نیست: برنامه همه‌چیز را خودکار انتخاب می‌کند",
                         insideMargin = RowMargin,
                         onClick = { showAdvanced = !showAdvanced },
                     )
@@ -179,22 +179,22 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
 
             if (showAdvanced) {
                 item {
-                    SectionTitle("Подключение")
+                    SectionTitle("اتصال")
                     SectionCard {
                         val obfuscations = listOf<Obfuscation?>(null) + Obfuscation.entries
                         SuperDropdown(
-                            title = "Маскировка",
-                            summary = settings.obfuscation?.summary ?: "Подбирается под вашу сеть",
-                            items = obfuscations.map { it?.title ?: "Авто" },
+                            title = "پنهان‌سازی",
+                            summary = settings.obfuscation?.summary ?: "متناسب با شبکه‌ی شما انتخاب می‌شود",
+                            items = obfuscations.map { it?.title ?: "خودکار" },
                             selectedIndex = obfuscations.indexOf(settings.obfuscation),
                             insideMargin = RowMargin,
                             onSelectedIndexChange = { index -> store.updateSettings { it.copy(obfuscation = obfuscations[index]) } },
                         )
                         RowDivider()
                         SuperDropdown(
-                            title = "Сервер",
-                            summary = if (manualEndpoint) "Свой адрес WARP" else "Подбирается автоматически",
-                            items = listOf("Авто", "Вручную"),
+                            title = "سرور",
+                            summary = if (manualEndpoint) "آدرس WARP شخصی" else "خودکار انتخاب می‌شود",
+                            items = listOf("خودکار", "دستی"),
                             selectedIndex = if (manualEndpoint) 1 else 0,
                             insideMargin = RowMargin,
                             onSelectedIndexChange = { index ->
@@ -213,7 +213,7 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                                         store.updateSettings { it.copy(manualEndpoint = endpointText) }
                                     }
                                 },
-                                label = "Адрес:порт",
+                                label = "آدرس:پورت",
                                 singleLine = true,
                                 backgroundColor = Palette.bgSheet,
                                 borderColor = if (ENDPOINT_PATTERN.matches(endpointText)) Palette.brand else Palette.danger,
@@ -231,30 +231,30 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                         )
                         RowDivider()
                         SuperArrow(
-                            title = "Сайт для QUIC-маски",
-                            summary = settings.quicSni.ifBlank { "Случайный популярный сайт" },
+                            title = "سایت برای ماسک QUIC",
+                            summary = settings.quicSni.ifBlank { "یک سایت محبوب تصادفی" },
                             insideMargin = RowMargin,
                             onClick = { editSni = true },
                         )
                         RowDivider()
                         SuperArrow(
-                            title = "Подобрать сервер заново",
-                            summary = "При следующем подключении",
+                            title = "انتخاب دوباره‌ی سرور",
+                            summary = "در اتصال بعدی",
                             insideMargin = RowMargin,
                             onClick = {
                                 vpn.forgetServer()
-                                toast(context, "При следующем подключении сервер подберётся заново")
+                                toast(context, "در اتصال بعدی سرور دوباره انتخاب می‌شود")
                             },
                         )
                     }
                 }
 
                 item {
-                    SectionTitle("Аккаунт WARP")
+                    SectionTitle("حساب WARP")
                     SectionCard {
                         SuperArrow(
-                            title = "Зарегистрироваться заново",
-                            summary = if (store.account != null) "Новый ключ и адрес WARP" else "Регистрация будет при первом подключении",
+                            title = "ثبت‌نام دوباره",
+                            summary = if (store.account != null) "کلید و آدرس WARP جدید" else "ثبت‌نام در اولین اتصال انجام می‌شود",
                             insideMargin = RowMargin,
                             onClick = { confirmReset = true },
                         )
@@ -263,7 +263,7 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
             }
 
             item {
-                SectionTitle("О приложении")
+                SectionTitle("درباره‌ی برنامه")
                 SectionCard {
                     BasicComponent(
                         title = "ByeByeRKN ${BuildConfig.VERSION_NAME}",
@@ -272,9 +272,9 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                     )
                     RowDivider()
                     BasicComponent(
-                        title = "Лицензии",
-                        summary = "amneziawg-android и amneziawg-go (Apache-2.0 / MIT), на основе WireGuard®. " +
-                            "Не связано с Cloudflare; WARP — сервис Cloudflare, Inc.",
+                        title = "مجوزها",
+                        summary = "amneziawg-android و amneziawg-go (Apache-2.0 / MIT)، بر پایه‌ی WireGuard®. " +
+                            "ارتباطی با Cloudflare ندارد؛ WARP سرویس Cloudflare, Inc. است.",
                         insideMargin = RowMargin,
                     )
                 }
@@ -294,17 +294,17 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
 
     SuperDialog(
         show = confirmReset,
-        title = "Новая регистрация",
-        summary = "Будет создан новый ключ и адрес WARP. Старые экспортированные конфиги продолжат работать, пока их не отключит Cloudflare.",
+        title = "ثبت‌نام جدید",
+        summary = "کلید و آدرس WARP جدیدی ساخته می‌شود. کانفیگ‌های صادرشده‌ی قبلی تا زمانی که Cloudflare آن‌ها را غیرفعال نکند کار می‌کنند.",
         onDismissRequest = { confirmReset = false },
     ) {
         DialogButtons(
-            confirm = "Сбросить",
+            confirm = "بازنشانی",
             onDismiss = { confirmReset = false },
             onConfirm = {
                 confirmReset = false
                 vpn.resetAccount()
-                toast(context, "Новая регистрация будет при следующем подключении")
+                toast(context, "ثبت‌نام جدید در اتصال بعدی انجام می‌شود")
             },
         )
     }
@@ -315,9 +315,9 @@ private fun SniDialog(show: Boolean, current: String, onDismiss: () -> Unit, onS
     var draft by remember(show) { mutableStateOf(current) }
     SuperDialog(
         show = show,
-        title = "Сайт для QUIC-маски",
-        summary = "Первый пакет будет похож на HTTP/3-запрос к этому сайту. " +
-            "Пусто — случайный из ${QuicMask.defaultSni.take(3).joinToString()} и других.",
+        title = "سایت برای ماسک QUIC",
+        summary = "بسته‌ی اول شبیه یک درخواست HTTP/3 به این سایت خواهد بود. " +
+            "اگر خالی باشد، یکی از ${QuicMask.defaultSni.take(3).joinToString()} و سایت‌های دیگر به‌صورت تصادفی انتخاب می‌شود.",
         onDismissRequest = onDismiss,
     ) {
         TextField(
@@ -329,14 +329,14 @@ private fun SniDialog(show: Boolean, current: String, onDismiss: () -> Unit, onS
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))
-        DialogButtons(confirm = "Сохранить", onDismiss = onDismiss, onConfirm = { onSave(draft) })
+        DialogButtons(confirm = "ذخیره", onDismiss = onDismiss, onConfirm = { onSave(draft) })
     }
 }
 
 @Composable
 private fun DialogButtons(confirm: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        TextButton(text = "Отмена", onClick = onDismiss, modifier = Modifier.weight(1f))
+        TextButton(text = "انصراف", onClick = onDismiss, modifier = Modifier.weight(1f))
         TextButton(
             text = confirm,
             onClick = onConfirm,
@@ -347,12 +347,12 @@ private fun DialogButtons(confirm: String, onDismiss: () -> Unit, onConfirm: () 
 }
 
 private fun validateConfig(text: String?): String? {
-    if (text.isNullOrBlank()) return "В буфере обмена нет текста"
+    if (text.isNullOrBlank()) return "متنی در کلیپ‌بورد نیست"
     return try {
         Config.parse(BufferedReader(StringReader(text)))
         null
     } catch (e: Exception) {
-        "Это не похоже на конфиг WireGuard/AmneziaWG: ${e.message}"
+        "این شبیه کانفیگ WireGuard/AmneziaWG نیست: ${e.message}"
     }
 }
 
@@ -364,7 +364,7 @@ private fun shareConfig(context: Context, text: String) {
         .setType("text/plain")
         .putExtra(Intent.EXTRA_STREAM, uri)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    context.startActivity(Intent.createChooser(intent, "Поделиться конфигом"))
+    context.startActivity(Intent.createChooser(intent, "اشتراک‌گذاری کانفیگ"))
 }
 
 private fun copyToClipboard(context: Context, text: String) {

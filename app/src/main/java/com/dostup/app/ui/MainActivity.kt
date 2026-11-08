@@ -90,7 +90,7 @@ private fun DostupRoot(app: DostupApp, connectRequested: Boolean, onConnectHandl
         if (result.resultCode == Activity.RESULT_OK) {
             app.vpn.connect()
         } else {
-            Toast.makeText(context, "Без разрешения на VPN подключиться не получится", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "بدون مجوز VPN امکان اتصال وجود ندارد", Toast.LENGTH_LONG).show()
         }
     }
     val proceedToConnect = {
@@ -121,9 +121,9 @@ private fun DostupRoot(app: DostupApp, connectRequested: Boolean, onConnectHandl
     Scaffold(
         bottomBar = {
             NavigationBar(color = Palette.bgBase) {
-                NavItem(tab == 0, { tab = 0 }, Icons.Outlined.Home, "Главная")
-                NavItem(tab == 1, { tab = 1 }, Icons.AutoMirrored.Outlined.List, "Приложения")
-                NavItem(tab == 2, { tab = 2 }, Icons.Outlined.Settings, "Настройки")
+                NavItem(tab == 0, { tab = 0 }, Icons.Outlined.Home, "خانه")
+                NavItem(tab == 1, { tab = 1 }, Icons.AutoMirrored.Outlined.List, "برنامه‌ها")
+                NavItem(tab == 2, { tab = 2 }, Icons.Outlined.Settings, "تنظیمات")
             }
         },
     ) { padding ->

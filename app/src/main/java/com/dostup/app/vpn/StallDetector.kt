@@ -22,7 +22,7 @@ class StallDetector(
     fun update(nowMs: Long, rx: Long, tx: Long, lastHandshakeSec: Long): String? {
         if (lastHandshakeSec > 0) {
             val age = nowMs / 1000 - lastHandshakeSec
-            if (age > maxHandshakeAgeSec) return "рукопожатие не обновлялось $age с"
+            if (age > maxHandshakeAgeSec) return "handshake به‌روز نشده است: $age ثانیه"
         }
         // Counters restart when the tunnel is replaced; old samples are meaningless then.
         if (samples.isNotEmpty() && (rx < samples.last().rx || tx < samples.last().tx)) samples.clear()
@@ -33,6 +33,6 @@ class StallDetector(
         if (nowMs - oldest.atMs < windowMs * 3 / 4) return null // not enough history yet
         val sent = tx - oldest.tx
         val received = rx - oldest.rx
-        return if (sent >= minTxBytes && received == 0L) "данные уходят, а ответов нет" else null
+        return if (sent >= minTxBytes && received == 0L) "داده ارسال می‌شود اما پاسخی نمی‌آید" else null
     }
 }

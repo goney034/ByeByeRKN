@@ -11,7 +11,7 @@ data class ExitInfo(val colo: String, val country: String, val ip: String, val w
      */
     val inRussia: Boolean get() = colo in RUSSIAN_COLOS
 
-    /** "Варшава, PL" or just the code when the city is unknown. */
+    /** "ورشو, PL" or just the code when the city is unknown. */
     val label: String get() = listOfNotNull(city ?: colo, country.takeIf { it.isNotBlank() }).joinToString(", ")
 
     companion object {
@@ -32,17 +32,17 @@ data class ExitInfo(val colo: String, val country: String, val ip: String, val w
 
         /** Cloudflare data centres reachable from Russia and nearby, by IATA code. */
         val CITIES = mapOf(
-            "WAW" to "Варшава", "FRA" to "Франкфурт", "HEL" to "Хельсинки", "ARN" to "Стокгольм",
-            "AMS" to "Амстердам", "VIE" to "Вена", "PRG" to "Прага", "BUD" to "Будапешт",
-            "RIX" to "Рига", "TLL" to "Таллин", "VNO" to "Вильнюс", "DME" to "Москва",
-            "LED" to "Санкт-Петербург", "KJA" to "Красноярск", "SVX" to "Екатеринбург", "OVB" to "Новосибирск",
-            "OTP" to "Бухарест", "SOF" to "София", "BEG" to "Белград", "KIV" to "Кишинёв",
-            "DUS" to "Дюссельдорф", "HAM" to "Гамбург", "MUC" to "Мюнхен", "BER" to "Берлин", "TXL" to "Берлин",
-            "CPH" to "Копенгаген", "OSL" to "Осло", "LHR" to "Лондон", "MAN" to "Манчестер", "CDG" to "Париж",
-            "MRS" to "Марсель", "MXP" to "Милан", "FCO" to "Рим", "ZRH" to "Цюрих", "GVA" to "Женева",
-            "IST" to "Стамбул", "EVN" to "Ереван", "TBS" to "Тбилиси", "GYD" to "Баку", "ALA" to "Алматы",
-            "TAS" to "Ташкент", "KBP" to "Киев", "MSQ" to "Минск", "ATH" to "Афины", "LIS" to "Лиссабон",
-            "MAD" to "Мадрид", "BCN" to "Барселона", "BRU" to "Брюссель", "DUB" to "Дублин",
+            "WAW" to "ورشو", "FRA" to "فرانکفورت", "HEL" to "هلسینکی", "ARN" to "استکهلم",
+            "AMS" to "آمستردام", "VIE" to "وین", "PRG" to "پراگ", "BUD" to "بوداپست",
+            "RIX" to "ریگا", "TLL" to "تالین", "VNO" to "ویلنیوس", "DME" to "مسکو",
+            "LED" to "سن‌پترزبورگ", "KJA" to "کراسنویارسک", "SVX" to "یکاترینبورگ", "OVB" to "نووسیبیرسک",
+            "OTP" to "بخارست", "SOF" to "صوفیه", "BEG" to "بلگراد", "KIV" to "کیشینف",
+            "DUS" to "دوسلدورف", "HAM" to "هامبورگ", "MUC" to "مونیخ", "BER" to "برلین", "TXL" to "برلین",
+            "CPH" to "کپنهاگ", "OSL" to "اسلو", "LHR" to "لندن", "MAN" to "منچستر", "CDG" to "پاریس",
+            "MRS" to "مارسی", "MXP" to "میلان", "FCO" to "رم", "ZRH" to "زوریخ", "GVA" to "ژنو",
+            "IST" to "استانبول", "EVN" to "ایروان", "TBS" to "تفلیس", "GYD" to "باکو", "ALA" to "آلماتی",
+            "TAS" to "تاشکند", "KBP" to "کیف", "MSQ" to "مینسک", "ATH" to "آتن", "LIS" to "لیسبون",
+            "MAD" to "مادرید", "BCN" to "بارسلون", "BRU" to "بروکسل", "DUB" to "دوبلین",
         )
     }
 }

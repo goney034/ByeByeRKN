@@ -85,14 +85,14 @@ fun AppsScreen(vpn: VpnController, store: Store) {
 
     Box(Modifier.fillMaxSize().background(Palette.bgBase)) {
         Column(Modifier.fillMaxSize()) {
-            TopAppBar(title = "Приложения", largeTitle = "Раздельный туннель", scrollBehavior = scrollBehavior)
+            TopAppBar(title = "برنامه‌ها", largeTitle = "تونل تفکیکی", scrollBehavior = scrollBehavior)
             LazyColumn(
                 Modifier.fillMaxSize().overScrollVertical().nestedScroll(scrollBehavior.nestedScrollConnection),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 24.dp),
             ) {
                 item {
                     TabRow(
-                        tabs = listOf("Все", "Кроме", "Только"),
+                        tabs = listOf("همه", "به‌جز", "فقط"),
                         selectedTabIndex = modes.indexOf(mode),
                         onTabSelected = { index ->
                             changed = true
@@ -108,9 +108,9 @@ fun AppsScreen(vpn: VpnController, store: Store) {
                     )
                     Text(
                         when (mode) {
-                            SplitMode.ALL -> "Весь трафик телефона идёт через VPN."
-                            SplitMode.EXCLUDE -> "Отмеченные приложения работают напрямую, остальные через VPN. Удобно для банков, Госуслуг и маркетплейсов."
-                            SplitMode.INCLUDE -> "Через VPN идут только отмеченные приложения, всё остальное напрямую."
+                            SplitMode.ALL -> "تمام ترافیک گوشی از طریق VPN عبور می‌کند."
+                            SplitMode.EXCLUDE -> "برنامه‌های علامت‌خورده مستقیم کار می‌کنند و بقیه از طریق VPN. برای بانک‌ها، درگاه خدمات دولتی (Gosuslugi) و بازارچه‌های اینترنتی مناسب است."
+                            SplitMode.INCLUDE -> "فقط برنامه‌های علامت‌خورده از طریق VPN می‌روند و بقیه مستقیم."
                         },
                         color = Palette.textTertiary,
                         fontSize = 15.sp,
@@ -123,9 +123,9 @@ fun AppsScreen(vpn: VpnController, store: Store) {
                     item {
                         SectionCard(Modifier.padding(top = 20.dp)) {
                             SuperArrow(
-                                title = "Применить сейчас",
+                                title = "اعمال همین حالا",
                                 titleColor = BasicComponentDefaults.titleColor(color = Palette.brand),
-                                summary = "Переподключить VPN с новыми настройками",
+                                summary = "اتصال دوباره‌ی VPN با تنظیمات جدید",
                                 insideMargin = RowMargin,
                                 onClick = {
                                     changed = false
@@ -139,25 +139,25 @@ fun AppsScreen(vpn: VpnController, store: Store) {
                 if (mode == SplitMode.ALL) return@LazyColumn
 
                 item {
-                    SectionTitle("Быстрый выбор")
+                    SectionTitle("انتخاب سریع")
                     SectionCard {
                         if (mode == SplitMode.EXCLUDE) {
                             SuperArrow(
-                                title = "Добавить российские сервисы",
-                                summary = "Банки, Госуслуги, маркетплейсы, Яндекс, VK",
+                                title = "افزودن سرویس‌های روسی",
+                                summary = "بانک‌ها، Gosuslugi، بازارچه‌های اینترنتی، Yandex، VK",
                                 insideMargin = RowMargin,
                                 onClick = { setSelected(selected + AppCatalog.russianServices) },
                             )
                         } else {
                             SuperArrow(
-                                title = "Добавить заблокированные",
+                                title = "افزودن برنامه‌های مسدودشده",
                                 summary = "Telegram, YouTube, Discord, Instagram, WhatsApp",
                                 insideMargin = RowMargin,
                                 onClick = { setSelected(selected + AppCatalog.blockedServices) },
                             )
                         }
                         RowDivider()
-                        SuperArrow(title = "Снять все отметки", insideMargin = RowMargin, onClick = { setSelected(emptySet()) })
+                        SuperArrow(title = "برداشتن همه‌ی علامت‌ها", insideMargin = RowMargin, onClick = { setSelected(emptySet()) })
                     }
                 }
 
@@ -174,11 +174,11 @@ fun AppsScreen(vpn: VpnController, store: Store) {
                 val visible = list
                     .filter { query.isBlank() || it.label.contains(query, true) || it.packageName.contains(query, true) }
                 item {
-                    SectionTitle("Приложения · отмечено ${list.count { it.packageName in selected }} из ${list.size}")
+                    SectionTitle("برنامه‌ها · علامت‌خورده: ${list.count { it.packageName in selected }} از ${list.size}")
                     TextField(
                         value = query,
                         onValueChange = { query = it },
-                        label = "Поиск приложения",
+                        label = "جست‌وجوی برنامه",
                         useLabelAsPlaceholder = true,
                         singleLine = true,
                         backgroundColor = Palette.bgSurfaceAlt,

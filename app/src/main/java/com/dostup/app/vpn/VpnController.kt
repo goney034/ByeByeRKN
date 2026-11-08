@@ -166,7 +166,7 @@ class VpnController(private val context: Context, private val store: Store) {
     }
 
     /** Debug builds only: pretend the current route died, to exercise the failover path. */
-    fun debugFailover() = failover("проверка переключения")
+    fun debugFailover() = failover("بررسی تعویض مسیر")
 
     /** The config the app would use right now, for sharing with other AmneziaWG clients. */
     suspend fun exportConfig(): String {
@@ -184,8 +184,8 @@ class VpnController(private val context: Context, private val store: Store) {
     }
 
     private fun ensureAccount(): WarpAccount = store.account ?: run {
-        _status.value = VpnStatus.Working("Регистрация в WARP…")
-        api.register(onRetry = { _status.value = VpnStatus.Working("Регистрация в WARP: пробую обходной путь…") })
+        _status.value = VpnStatus.Working("ثبت‌نام در WARP…")
+        api.register(onRetry = { _status.value = VpnStatus.Working("ثبت‌نام در WARP: در حال امتحان مسیر جایگزین…") })
             .also {
                 store.account = it
                 store.lastRegisterAt = System.currentTimeMillis()
@@ -218,17 +218,17 @@ class VpnController(private val context: Context, private val store: Store) {
             bringDown(keepService = store.wantConnected)
             if (networks.isCellular && looksLikeWhitelist()) {
                 retryDelayS = MAX_RETRY_S
-                failAndRetry("Похоже, оператор включил белые списки: открыты только разрешённые сайты, VPN так не пройдёт.")
+                failAndRetry("به نظر می‌رسد اپراتور فهرست سفید فعال کرده است: فقط سایت‌های مجاز باز هستند و VPN از این مسیر کار نمی‌کند.")
             } else {
-                failAndRetry("Ни один сервер не ответил.")
+                failAndRetry("هیچ سروری پاسخ نداد.")
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: WarpApiException) {
             bringDown(keepService = store.wantConnected)
             failAndRetry(
-                "Не удалось зарегистрироваться в WARP: ${e.message}. Если API Cloudflare недоступен в вашей сети, " +
-                    "импортируйте готовый конфиг в настройках.",
+                "ثبت‌نام در WARP ناموفق بود: ${e.message}. اگر API کلودفلر در شبکه‌ی شما در دسترس نیست، " +
+                    "در تنظیمات یک کانفیگ آماده وارد کنید.",
             )
         } catch (e: BackendException) {
             Log.w(TAG, "backend error", e)
@@ -238,7 +238,7 @@ class VpnController(private val context: Context, private val store: Store) {
             // Android refuses to start the service for background apps; only the user can restart from here.
             Log.w(TAG, "cannot start VPN service from background", e)
             bringDown()
-            _status.value = VpnStatus.Failed("Android не дал включить VPN в фоне. Нажмите «Подключиться».")
+            _status.value = VpnStatus.Failed("اندروید اجازه نداد VPN در پس‌زمینه روشن شود. روی «اتصال» بزنید.")
         } catch (e: Exception) {
             Log.w(TAG, "connect failed", e)
             bringDown(keepService = store.wantConnected)
@@ -284,7 +284,7 @@ class VpnController(private val context: Context, private val store: Store) {
             // A probe tells in a moment which remembered routes still answer, without touching the tunnel.
             val remembered = book.knownGood(now()).filter { it.matches(settings) && !it.sameRoute(failed) }
             if (remembered.isNotEmpty()) {
-                _status.value = VpnStatus.Working("Проверяю известные маршруты…")
+                _status.value = VpnStatus.Working("در حال بررسی مسیرهای شناخته‌شده…")
                 val answered = scanner.scanRoutes(remembered.map { it.endpoint to it.params }).map { it.endpoint }
                 for (route in remembered) {
                     if (route.endpoint !in answered) {
@@ -305,7 +305,7 @@ class VpnController(private val context: Context, private val store: Store) {
                 // With a working route in hand, the heavy disguises aren't worth the battery.
                 if (degraded != null && index >= MASKS_WITH_FALLBACK) break
                 val hits = scanner.scan(remaining, listOf(mask.params(settings.quicSni))) { done, total, found ->
-                    _status.value = VpnStatus.Working("Ищу сервер (${mask.title}): $done из $total, ответили $found")
+                    _status.value = VpnStatus.Working("جست‌وجوی سرور (${mask.title}): $done از $total، پاسخ‌دهنده: $found")
                 }
                 reached += hits.map { WarpEndpoints.familyOf(it.endpoint) }
                 val candidates = hits.map { Candidate(it.endpoint, it.params, it.rttMs) }.filterNot { it.sameRoute(failed) }
@@ -358,7 +358,7 @@ class VpnController(private val context: Context, private val store: Store) {
             val steps = if (mtuRetriesLeft > 0) (listOf(candidate.mtu) + WarpConfig.MTU_STEPS).distinct() else listOf(candidate.mtu)
             for ((index, mtu) in steps.withIndex()) {
                 val note = if (index > 0) " · MTU $mtu" else ""
-                _status.value = VpnStatus.Working("Подключаюсь: ${candidate.endpoint} · ${candidate.params.obfuscation.title}$note")
+                _status.value = VpnStatus.Working("در حال اتصال: ${candidate.endpoint} · ${candidate.params.obfuscation.title}$note")
                 val route = candidate.withMtu(mtu)
                 val outcome = tryConfig(render(candidate, mtu), verify = true)
                 onTunnel = route
@@ -407,7 +407,7 @@ class VpnController(private val context: Context, private val store: Store) {
         val now = System.currentTimeMillis()
         if (now - store.lastRegisterAt < REREGISTER_EVERY_MS) return false
         store.lastRegisterAt = now
-        _status.value = VpnStatus.Working("Обновляю регистрацию в WARP…")
+        _status.value = VpnStatus.Working("در حال به‌روزرسانی ثبت‌نام WARP…")
         return runCatching { api.register() }
             .onSuccess {
                 Log.i(TAG, "registered a new WARP account")
@@ -433,7 +433,7 @@ class VpnController(private val context: Context, private val store: Store) {
         }
         val delayS = retryDelayS
         retryDelayS = (retryDelayS * 2).coerceAtMost(MAX_RETRY_S)
-        _status.value = VpnStatus.Failed("$message Повторю через ${formatSeconds(delayS)}.")
+        _status.value = VpnStatus.Failed("$message تلاش مجدد پس از ${formatSeconds(delayS)}.")
         retryJob?.cancel()
         retryJob = scope.launch {
             delay(delayS * 1000L)
@@ -452,7 +452,7 @@ class VpnController(private val context: Context, private val store: Store) {
         lastAutoSearchAt = now
         val failed = current
         Log.i(TAG, "failover: $reason (was ${failed?.endpoint} ${failed?.params?.obfuscation})")
-        _status.value = VpnStatus.Working("Связь пропала ($reason), ищу другой сервер…")
+        _status.value = VpnStatus.Working("ارتباط قطع شد ($reason)، در حال جست‌وجوی سرور دیگر…")
         connectJob = scope.launch { connectInternal(failed) }
     }
 
@@ -476,7 +476,7 @@ class VpnController(private val context: Context, private val store: Store) {
             when (_status.value) {
                 is VpnStatus.Connected, is VpnStatus.Working -> {
                     val previous = connectJob
-                    _status.value = VpnStatus.Working("Сеть сменилась ($label), подключаюсь…")
+                    _status.value = VpnStatus.Working("شبکه تغییر کرد ($label)، در حال اتصال…")
                     connectJob = scope.launch {
                         previous?.cancelAndJoin()
                         connectInternal()
@@ -493,13 +493,13 @@ class VpnController(private val context: Context, private val store: Store) {
     }
 
     private suspend fun connectCustom(text: String, split: SplitRule) {
-        _status.value = VpnStatus.Working("Подключаюсь по своему конфигу…")
+        _status.value = VpnStatus.Working("در حال اتصال با کانفیگ سفارشی…")
         if (tryConfig(WarpConfig.applySplit(text, split), verify = false) == Outcome.OK) {
-            _status.value = VpnStatus.Connected(WarpConfig.endpointOf(text) ?: "свой конфиг", null, null, System.currentTimeMillis(), false)
+            _status.value = VpnStatus.Connected(WarpConfig.endpointOf(text) ?: "کانفیگ سفارشی", null, null, System.currentTimeMillis(), false)
             startMonitor(checkQuality = false)
         } else {
             bringDown(keepService = store.wantConnected)
-            failAndRetry("Сервер из импортированного конфига не ответил на рукопожатие.")
+            failAndRetry("سرور کانفیگ واردشده به handshake پاسخ نداد.")
         }
     }
 
@@ -676,7 +676,7 @@ class VpnController(private val context: Context, private val store: Store) {
             ).map { "$it${(1..10).random()}:$port" } + "[2606:4700:d0::a29f:c001]:$port"
             val dc = TelegramProbe.dcs[1]
             for (endpoint in endpoints) {
-                _status.value = VpnStatus.Working("Замер выхода: $endpoint")
+                _status.value = VpnStatus.Working("اندازه‌گیری خروجی: $endpoint")
                 val text = WarpConfig.render(account, endpoint, params, settings.dns.servers, split)
                 val outcome = runCatching { tryConfig(text, verify = false) }.getOrNull()
                 val exit = if (outcome == Outcome.OK) currentExit() else null
@@ -741,7 +741,7 @@ class VpnController(private val context: Context, private val store: Store) {
                     val flowing = stats.totalRx() - rxAtLastCheck >= QUALITY_CHECK_MIN_RX
                     rxAtLastCheck = stats.totalRx()
                     if (flowing && !(trafficGoesThroughWarp() && routeIsGood())) {
-                        failover("маршрут стал хуже")
+                        failover("مسیر بدتر شد")
                     }
                 }
             }
@@ -786,15 +786,15 @@ class VpnController(private val context: Context, private val store: Store) {
             (settings.manualEndpoint == null || endpoint == settings.manualEndpoint)
 
     private fun describe(e: BackendException): String = when (e.reason) {
-        BackendException.Reason.VPN_NOT_AUTHORIZED -> "Нет разрешения на VPN. Нажмите «Подключиться» ещё раз и разрешите подключение."
-        BackendException.Reason.UNABLE_TO_START_VPN -> "Система не запустила VPN-службу. Попробуйте ещё раз."
-        BackendException.Reason.TUN_CREATION_ERROR -> "Не удалось создать VPN-интерфейс. Возможно, включён другой VPN или «Постоянный VPN» другого приложения."
-        BackendException.Reason.DNS_RESOLUTION_FAILURE -> "Не удалось определить адрес сервера ${e.format.firstOrNull() ?: ""}."
-        BackendException.Reason.GO_ACTIVATION_ERROR_CODE -> "Туннель не запустился (код ${e.format.firstOrNull() ?: "?"})."
-        else -> "Ошибка VPN: ${e.reason}"
+        BackendException.Reason.VPN_NOT_AUTHORIZED -> "مجوز VPN داده نشده است. دوباره روی «اتصال» بزنید و اتصال را مجاز کنید."
+        BackendException.Reason.UNABLE_TO_START_VPN -> "سیستم سرویس VPN را راه‌اندازی نکرد. دوباره تلاش کنید."
+        BackendException.Reason.TUN_CREATION_ERROR -> "ساخت رابط VPN ناموفق بود. شاید VPN دیگری یا «VPN همیشه روشن» برنامه‌ی دیگری فعال است."
+        BackendException.Reason.DNS_RESOLUTION_FAILURE -> "پیدا کردن آدرس سرور ناموفق بود: ${e.format.firstOrNull() ?: ""}."
+        BackendException.Reason.GO_ACTIVATION_ERROR_CODE -> "تونل راه‌اندازی نشد (کد ${e.format.firstOrNull() ?: "?"})."
+        else -> "خطای VPN: ${e.reason}"
     }
 
-    private fun formatSeconds(seconds: Int) = if (seconds < 60) "$seconds с" else "${seconds / 60} мин"
+    private fun formatSeconds(seconds: Int) = if (seconds < 60) "$seconds ثانیه" else "${seconds / 60} دقیقه"
 
     private companion object {
         const val TAG = "Dostup/Vpn"

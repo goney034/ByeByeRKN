@@ -58,7 +58,7 @@ object TelegramProbe {
                 if (isResPq(payload)) {
                     Result(connectMs, (System.nanoTime() - sent) / 1_000_000, null)
                 } else {
-                    Result(connectMs, null, "неожиданный ответ, ${payload.size} байт")
+                    Result(connectMs, null, "پاسخ غیرمنتظره، ${payload.size} بایت")
                 }
             }
         } catch (e: Exception) {
@@ -89,11 +89,11 @@ object TelegramProbe {
         var read = 0
         while (read < payload.size) {
             val n = input.read(payload, read, payload.size - read)
-            if (n < 0) error("соединение закрыто")
+            if (n < 0) error("اتصال بسته شد")
             read += n
         }
         return payload
     }
 
-    private fun InputStream.readOrThrow(): Int = read().also { if (it < 0) error("соединение закрыто") }
+    private fun InputStream.readOrThrow(): Int = read().also { if (it < 0) error("اتصال بسته شد") }
 }

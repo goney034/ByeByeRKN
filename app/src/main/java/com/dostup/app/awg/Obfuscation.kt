@@ -21,13 +21,13 @@ enum class Obfuscation(
     val junkSpread: IntRange,
     val firstPacket: FirstPacket,
 ) {
-    LIGHT("Лёгкая", "Несколько мусорных пакетов перед рукопожатием", 3..6, 40..64, 20..60, FirstPacket.NONE),
-    QUIC("QUIC", "Первый пакет — HTTP/3 к обычному сайту", 3..6, 40..64, 20..60, FirstPacket.QUIC),
-    STUN("STUN", "Первый пакет — как в видеозвонках WebRTC", 3..6, 40..64, 20..60, FirstPacket.STUN),
-    DNS("DNS", "Первый пакет — DNS-запрос", 3..6, 40..64, 20..60, FirstPacket.DNS),
-    SIP("SIP", "Первый пакет — как в IP-телефонии", 3..6, 40..64, 20..60, FirstPacket.SIP),
-    HEAVY("Усиленная", "Много мусорных пакетов, для жёстких сетей", 60..120, 20..40, 300..800, FirstPacket.NONE),
-    NONE("Без маскировки", "Обычный WireGuard", 0..0, 0..0, 0..0, FirstPacket.NONE);
+    LIGHT("سبک", "چند بسته‌ی زائد پیش از handshake", 3..6, 40..64, 20..60, FirstPacket.NONE),
+    QUIC("QUIC", "بسته‌ی اول — HTTP/3 به یک وب‌سایت معمولی", 3..6, 40..64, 20..60, FirstPacket.QUIC),
+    STUN("STUN", "بسته‌ی اول — مانند تماس تصویری WebRTC", 3..6, 40..64, 20..60, FirstPacket.STUN),
+    DNS("DNS", "بسته‌ی اول — درخواست DNS", 3..6, 40..64, 20..60, FirstPacket.DNS),
+    SIP("SIP", "بسته‌ی اول — مانند تلفن اینترنتی (IP)", 3..6, 40..64, 20..60, FirstPacket.SIP),
+    HEAVY("تقویت‌شده", "تعداد زیادی بسته‌ی زائد، برای شبکه‌های سخت‌گیر", 60..120, 20..40, 300..800, FirstPacket.NONE),
+    NONE("بدون پنهان‌سازی", "WireGuard معمولی", 0..0, 0..0, 0..0, FirstPacket.NONE);
 
     fun params(sni: String? = null): AwgParams {
         val jc = junkCount.pick()

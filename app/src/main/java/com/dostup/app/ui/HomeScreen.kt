@@ -160,9 +160,9 @@ private fun ConnectButton(status: VpnStatus, onClick: () -> Unit) {
     ) {
         Text(
             when (status) {
-                is VpnStatus.Connected -> "Отключиться"
-                is VpnStatus.Working -> "Подключение…"
-                else -> "Подключиться"
+                is VpnStatus.Connected -> "قطع اتصال"
+                is VpnStatus.Working -> "در حال اتصال…"
+                else -> "اتصال"
             },
             color = if (connected) Palette.brand else Palette.textPrimary,
             fontSize = 20.sp,
@@ -181,13 +181,13 @@ private fun StatusLine(status: VpnStatus) {
         }
     }
     val (text, color) = when (status) {
-        VpnStatus.Disconnected -> "Сервер и маскировка подберутся сами" to Palette.textTertiary
+        VpnStatus.Disconnected -> "سرور و پنهان‌سازی خودکار انتخاب می‌شوند" to Palette.textTertiary
         is VpnStatus.Working -> status.stage to Palette.textTertiary
         is VpnStatus.Failed -> status.message to Palette.danger
         is VpnStatus.Connected -> {
-            val line = (if (status.verified) "Подключено · " else "Подключено без проверки трафика · ") +
+            val line = (if (status.verified) "متصل · " else "متصل، بدون بررسی ترافیک · ") +
                 formatDuration((now - status.since) / 1000)
-            (if (status.degraded) "$line\nЛучшего маршрута нет, Telegram может не работать" else line) to Palette.brand
+            (if (status.degraded) "$line\nمسیر بهتری وجود ندارد؛ ممکن است تلگرام کار نکند" else line) to Palette.brand
         }
     }
     Text(
@@ -203,12 +203,12 @@ private fun StatusLine(status: VpnStatus) {
 private fun SplitChip(store: Store, onClick: () -> Unit) {
     val context = LocalContext.current
     val settings by store.settings.collectAsStateWithLifecycle()
-    val label by produceState("Раздельный туннель", settings) {
+    val label by produceState("تونل تفکیکی", settings) {
         value = withContext(Dispatchers.IO) {
             when (settings.splitMode) {
-                SplitMode.ALL -> "Раздельный туннель выключен"
-                SplitMode.EXCLUDE -> "Напрямую: ${AppCatalog.installedOnly(context, settings.excludedApps).size} прил."
-                SplitMode.INCLUDE -> "Через VPN только ${AppCatalog.installedOnly(context, settings.includedApps).size} прил."
+                SplitMode.ALL -> "تونل تفکیکی خاموش است"
+                SplitMode.EXCLUDE -> "مستقیم: ${AppCatalog.installedOnly(context, settings.excludedApps).size} برنامه"
+                SplitMode.INCLUDE -> "فقط ${AppCatalog.installedOnly(context, settings.includedApps).size} برنامه از طریق VPN"
             }
         }
     }
@@ -218,7 +218,7 @@ private fun SplitChip(store: Store, onClick: () -> Unit) {
 @Composable
 private fun UpdateChip(version: String, url: String) {
     val context = LocalContext.current
-    HomeChip(Icons.Outlined.Info, "Доступна версия $version") {
+    HomeChip(Icons.Outlined.Info, "نسخه‌ی $version در دسترس است") {
         // A phone can have no browser at all.
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
     }
@@ -258,7 +258,7 @@ private fun ServerCard(status: VpnStatus, traffic: Traffic, store: Store, exit: 
         )
         Spacer(Modifier.height(14.dp))
         Text(
-            if (custom) "Свой конфиг" else "Cloudflare WARP",
+            if (custom) "کانفیگ سفارشی" else "Cloudflare WARP",
             color = Palette.textPrimary,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
@@ -267,7 +267,7 @@ private fun ServerCard(status: VpnStatus, traffic: Traffic, store: Store, exit: 
         )
         Spacer(Modifier.height(4.dp))
         // Where traffic really leaves says more to a person than a server address.
-        val place = connected?.let { exit?.city ?: it.endpoint } ?: "Сервер выберется автоматически"
+        val place = connected?.let { exit?.city ?: it.endpoint } ?: "سرور خودکار انتخاب می‌شود"
         val obfuscation = connected?.obfuscation?.title
         Text(
             listOfNotNull(place, "AmneziaWG", obfuscation).joinToString(" · "),
@@ -279,9 +279,9 @@ private fun ServerCard(status: VpnStatus, traffic: Traffic, store: Store, exit: 
         if (connected != null) {
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                Stat("Пинг", connected.rttMs?.let { "$it мс" } ?: "—")
-                Stat("Получено", formatBytes(traffic.rx))
-                Stat("Отправлено", formatBytes(traffic.tx))
+                Stat("پینگ", connected.rttMs?.let { "$it میلی‌ثانیه" } ?: "—")
+                Stat("دریافت‌شده", formatBytes(traffic.rx))
+                Stat("ارسال‌شده", formatBytes(traffic.tx))
             }
         }
     }
@@ -296,10 +296,10 @@ private fun Stat(label: String, value: String) {
 }
 
 private fun formatBytes(bytes: Long): String = when {
-    bytes < 1024 -> "$bytes Б"
-    bytes < 1024 * 1024 -> "%.1f КБ".format(bytes / 1024.0)
-    bytes < 1024L * 1024 * 1024 -> "%.1f МБ".format(bytes / (1024.0 * 1024))
-    else -> "%.2f ГБ".format(bytes / (1024.0 * 1024 * 1024))
+    bytes < 1024 -> "$bytes بایت"
+    bytes < 1024 * 1024 -> "%.1f کیلوبایت".format(bytes / 1024.0)
+    bytes < 1024L * 1024 * 1024 -> "%.1f مگابایت".format(bytes / (1024.0 * 1024))
+    else -> "%.2f گیگابایت".format(bytes / (1024.0 * 1024 * 1024))
 }
 
 private fun formatDuration(seconds: Long): String {

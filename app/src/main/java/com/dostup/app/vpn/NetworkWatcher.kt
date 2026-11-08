@@ -95,7 +95,7 @@ class NetworkWatcher(private val context: Context, private val onChange: (label:
 
     private fun recompute() {
         val (next, label) = synchronized(networks) {
-            networks.entries.minByOrNull { rank(it.value) }?.let { it.key to label(it.value) } ?: (null to "нет сети")
+            networks.entries.minByOrNull { rank(it.value) }?.let { it.key to label(it.value) } ?: (null to "بدون شبکه")
         }
         if (next == primary.current) return
         val changed = primary.moveTo(next)
@@ -113,8 +113,8 @@ class NetworkWatcher(private val context: Context, private val onChange: (label:
     private fun label(c: NetworkCapabilities) = when {
         c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "Wi-Fi"
         c.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet"
-        c.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "мобильная сеть"
-        else -> "другая сеть"
+        c.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "شبکه موبایل"
+        else -> "شبکه دیگر"
     }
 
     private companion object {
