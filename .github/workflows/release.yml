@@ -60,10 +60,14 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           mkdir -p keystore
+          # Pasted secrets often carry a stray space or line break.
+          KEYSTORE_PASSWORD=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d ' \t\r\n')
+          KEY_ALIAS=$(printf '%s' "$KEY_ALIAS" | tr -d ' \t\r\n')
+          export KEYSTORE_PASSWORD
           if [ -f signing/release.jks.enc ]; then
             if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in signing/release.jks.enc \
                  -out keystore/release.jks -pass env:KEYSTORE_PASSWORD 2> /dev/null; then
-              echo "::error::Could not decrypt signing/release.jks.enc: KEYSTORE_PASSWORD is wrong."
+              echo "::error::Could not decrypt signing/release.jks.enc: KEYSTORE_PASSWORD is wrong (its length is ${#KEYSTORE_PASSWORD}, it should be 24)."
               exit 1
             fi
           else
