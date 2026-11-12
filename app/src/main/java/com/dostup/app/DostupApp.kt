@@ -40,7 +40,9 @@ class DostupApp : Application() {
         store = Store(this)
         updates = UpdateChecker(store, BuildConfig.RELEASES_REPO, BuildConfig.VERSION_NAME)
         // Before the VPN controller, so the first search already uses the newest saved list.
-        catalog = CatalogUpdater(store, BuildConfig.RELEASES_REPO)
+        // Fork: the signed address list is always taken from the original author's repository, because
+        // only he can sign it. Our own releases are still checked in RELEASES_REPO above.
+        catalog = CatalogUpdater(store, if (BuildConfig.RELEASES_REPO.isEmpty()) "" else "alexus282/ByeByeRKN")
         VpnNotification.createChannel(this)
         GoBackend.setForegroundNotification(VpnNotification)
         vpn = VpnController(this, store)

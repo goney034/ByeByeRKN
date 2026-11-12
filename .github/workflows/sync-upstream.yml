@@ -1,0 +1,117 @@
+name: Sync with upstream
+
+# Keeps this fork up to date with alexus282/ByeByeRKN:
+#   1. merges new upstream commits into main (stops with an error if there is a merge conflict),
+#   2. copies strings that upstream added but values-fa does not have yet into values-fa in English,
+#      so a Persian phone shows English for them instead of Russian, and opens an issue listing them,
+#   3. builds the app once as a check; nothing is pushed if the build fails,
+#   4. pushes to main, and
+#   5. when upstream raised versionName, starts the Release workflow for the matching tag.
+# Runs every day and can be started by hand from the Actions tab.
+on:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: alexus282/ByeByeRKN
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        id: fetch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "https://github.com/${UPSTREAM}.git"
+          git fetch --quiet upstream main
+          new=$(git rev-list --count HEAD..upstream/main)
+          echo "New upstream commits: $new"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          echo "head=$(git rev-parse --short upstream/main)" >> "$GITHUB_OUTPUT"
+
+      - name: Merge upstream
+        if: steps.fetch.outputs.new != '0'
+        run: |
+          if ! git merge upstream/main --no-edit -m "Merge upstream ${UPSTREAM}@${{ steps.fetch.outputs.head }}"; then
+            echo "::error::Merge conflict with upstream. Files:"
+            git diff --name-only --diff-filter=U
+            git merge --abort
+            exit 1
+          fi
+
+      - name: Fill missing Persian strings
+        if: steps.fetch.outputs.new != '0'
+        run: |
+          python3 .github/scripts/fill_fa_strings.py "$RUNNER_TEMP/missing.txt"
+          if ! git diff --quiet; then
+            git add app/src/main/res/values-fa/strings.xml
+            git commit -m "Copy new upstream strings into values-fa in English until they are translated"
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.fetch.outputs.new != '0'
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        if: steps.fetch.outputs.new != '0'
+
+      - name: Make sure Android platform 36 is installed
+        if: steps.fetch.outputs.new != '0'
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" || true
+
+      - name: Build as a check
+        if: steps.fetch.outputs.new != '0'
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Push
+        if: steps.fetch.outputs.new != '0'
+        run: git push origin HEAD:main
+
+      - name: Open an issue for untranslated strings
+        if: steps.fetch.outputs.new != '0'
+        run: |
+          n=$(wc -l < "$RUNNER_TEMP/missing.txt" | tr -d ' ')
+          if [ "$n" -gt 0 ]; then
+            {
+              echo "After merging upstream@${{ steps.fetch.outputs.head }}, these $n strings are still English in \`app/src/main/res/values-fa/strings.xml\`."
+              echo "Find the block under the \`TODO: translate\` comment, translate it, and delete the comment."
+              echo
+              sed 's/^/- `/; s/$/`/' "$RUNNER_TEMP/missing.txt"
+            } > "$RUNNER_TEMP/issue.md"
+            gh issue create --title "Translate $n new strings to Persian" --body-file "$RUNNER_TEMP/issue.md"
+          fi
+
+      - name: Start a release if upstream has a new version
+        if: steps.fetch.outputs.new != '0'
+        run: |
+          version=$(sed -n 's/.*versionName *= *"\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n 1)
+          tag="v${version}"
+          echo "App version: $version"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            echo "Release $tag already exists, not starting another one."
+          else
+            gh workflow run release.yml --ref main -f tag="$tag"
+            echo "Started the Release workflow for $tag."
+          fi
