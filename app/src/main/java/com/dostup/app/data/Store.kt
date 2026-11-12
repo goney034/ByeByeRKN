@@ -30,7 +30,8 @@ data class Settings(
     val manualEndpoint: String? = null,
     val dns: DnsOption = DnsOption.CLOUDFLARE,
     val splitMode: SplitMode = SplitMode.EXCLUDE,
-    val excludedApps: Set<String> = AppCatalog.russianServices,
+    // Fork: nothing is excluded from the VPN by default (upstream pre-selects Russian services).
+    val excludedApps: Set<String> = emptySet(),
     val includedApps: Set<String> = AppCatalog.blockedServices,
     /** SNI for the QUIC mask; blank means a random popular site. */
     val quicSni: String = "",

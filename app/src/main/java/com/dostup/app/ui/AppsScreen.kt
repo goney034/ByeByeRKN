@@ -144,22 +144,16 @@ fun AppsScreen(vpn: VpnController, store: Store) {
                 item {
                     SectionTitle(stringResource(R.string.quick_pick))
                     SectionCard {
-                        if (mode == SplitMode.EXCLUDE) {
-                            SuperArrow(
-                                title = stringResource(R.string.add_russian_services),
-                                summary = stringResource(R.string.add_russian_services_summary),
-                                insideMargin = RowMargin,
-                                onClick = { setSelected(selected + AppCatalog.russianServices) },
-                            )
-                        } else {
+                        // Fork: no "add Russian services" row in the "except" mode.
+                        if (mode == SplitMode.INCLUDE) {
                             SuperArrow(
                                 title = stringResource(R.string.add_blocked),
                                 summary = stringResource(R.string.add_blocked_summary),
                                 insideMargin = RowMargin,
                                 onClick = { setSelected(selected + AppCatalog.blockedServices) },
                             )
+                            RowDivider()
                         }
-                        RowDivider()
                         SuperArrow(title = stringResource(R.string.clear_all), insideMargin = RowMargin, onClick = { setSelected(emptySet()) })
                     }
                 }
