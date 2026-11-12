@@ -5,6 +5,8 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.SecureRandom
+import java.util.concurrent.ExecutorCompletionService
+import java.util.concurrent.Executors
 import javax.net.SocketFactory
 
 /**
@@ -34,12 +36,21 @@ object TelegramProbe {
         val ok get() = replyMs != null
     }
 
+    /** Blocking socket calls can't be cancelled, so a check that lost the race finishes here on its own. */
+    private val executor = Executors.newCachedThreadPool { Thread(it, "telegram-probe").apply { isDaemon = true } }
+
     /**
      * True when Telegram answers over IPv4, which is what the app mostly uses. IPv6 can work while
-     * IPv4 is cut, and that still leaves Telegram nearly dead. Two data centres, in case one is down.
+     * IPv4 is cut, and that still leaves Telegram nearly dead. Two data centres, in case one is
+     * down, asked at once: the first answer decides, so a dead one costs no extra timeout.
      */
-    fun answers(factory: SocketFactory, timeoutMs: Int = 2_500): Boolean =
-        listOf(dcs[1], dcs[3]).any { check(it.v4, factory, timeoutMs).ok }
+    fun answers(factory: SocketFactory, timeoutMs: Int = 2_500): Boolean {
+        val targets = listOf(dcs[1], dcs[3])
+        val results = ExecutorCompletionService<Boolean>(executor)
+        targets.forEach { dc -> results.submit { check(dc.v4, factory, timeoutMs).ok } }
+        repeat(targets.size) { if (results.take().get()) return true }
+        return false
+    }
 
     fun check(address: String, factory: SocketFactory = SocketFactory.getDefault(), timeoutMs: Int = 5_000): Result {
         var connectMs: Long? = null
@@ -58,7 +69,7 @@ object TelegramProbe {
                 if (isResPq(payload)) {
                     Result(connectMs, (System.nanoTime() - sent) / 1_000_000, null)
                 } else {
-                    Result(connectMs, null, "پاسخ غیرمنتظره، ${payload.size} بایت")
+                    Result(connectMs, null, "unexpected reply, ${payload.size} bytes")
                 }
             }
         } catch (e: Exception) {
@@ -89,11 +100,11 @@ object TelegramProbe {
         var read = 0
         while (read < payload.size) {
             val n = input.read(payload, read, payload.size - read)
-            if (n < 0) error("اتصال بسته شد")
+            if (n < 0) error("connection closed")
             read += n
         }
         return payload
     }
 
-    private fun InputStream.readOrThrow(): Int = read().also { if (it < 0) error("اتصال بسته شد") }
+    private fun InputStream.readOrThrow(): Int = read().also { if (it < 0) error("connection closed") }
 }

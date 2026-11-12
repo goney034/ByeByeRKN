@@ -23,8 +23,8 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -32,8 +32,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import com.dostup.app.DostupApp
 import com.dostup.app.R
 import top.yukonga.miuix.kmp.basic.NavigationBar
@@ -56,11 +56,8 @@ class MainActivity : ComponentActivity() {
         connectRequested = savedInstanceState == null && isConnectRequest(intent)
         val app = DostupApp.instance
         setContent {
-            // The UI is Persian only, so the layout is always right-to-left, whatever the system language is.
-            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                DostupTheme {
-                    DostupRoot(app, connectRequested) { connectRequested = false }
-                }
+            DostupTheme {
+                DostupRoot(app, connectRequested) { connectRequested = false }
             }
         }
     }
@@ -90,13 +87,14 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun DostupRoot(app: DostupApp, connectRequested: Boolean, onConnectHandled: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             app.vpn.connect()
         } else {
-            Toast.makeText(context, "بدون مجوز VPN امکان اتصال وجود ندارد", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, resources.getString(R.string.toast_vpn_permission_needed), Toast.LENGTH_LONG).show()
         }
     }
     val proceedToConnect = {
@@ -116,7 +114,12 @@ private fun DostupRoot(app: DostupApp, connectRequested: Boolean, onConnectHandl
         }
     }
 
-    LaunchedEffect(Unit) { app.updates.checkIfDue() }
+    val orientation by app.debugOrientation.collectAsState()
+    LaunchedEffect(orientation) { orientation?.let { (context as? Activity)?.requestedOrientation = it } }
+    LaunchedEffect(Unit) {
+        app.updates.checkIfDue()
+        app.catalog.refreshIfDue()
+    }
     LaunchedEffect(connectRequested) {
         if (connectRequested) {
             onConnectHandled()
@@ -127,16 +130,16 @@ private fun DostupRoot(app: DostupApp, connectRequested: Boolean, onConnectHandl
     Scaffold(
         bottomBar = {
             NavigationBar(color = Palette.bgBase) {
-                NavItem(tab == 0, { tab = 0 }, Icons.Outlined.Home, "خانه")
-                NavItem(tab == 1, { tab = 1 }, Icons.AutoMirrored.Outlined.List, "برنامه‌ها")
-                NavItem(tab == 2, { tab = 2 }, Icons.Outlined.Settings, "تنظیمات")
+                NavItem(tab == 0, { tab = 0 }, Icons.Outlined.Home, stringResource(R.string.nav_home))
+                NavItem(tab == 1, { tab = 1 }, Icons.AutoMirrored.Outlined.List, stringResource(R.string.nav_apps))
+                NavItem(tab == 2, { tab = 2 }, Icons.Outlined.Settings, stringResource(R.string.nav_settings))
             }
         },
     ) { padding ->
         // Screens draw under the status bar themselves; only the navigation bar is reserved here.
         Box(Modifier.padding(bottom = padding.calculateBottomPadding())) {
             when (tab) {
-                0 -> HomeScreen(app.vpn, app.store, app.updates, requestConnect, openApps = { tab = 1 })
+                0 -> HomeScreen(app.vpn, app.store, app.updates, requestConnect, openApps = { tab = 1 }, openSettings = { tab = 2 })
                 1 -> AppsScreen(app.vpn, app.store)
                 else -> SettingsScreen(app.vpn, app.store)
             }

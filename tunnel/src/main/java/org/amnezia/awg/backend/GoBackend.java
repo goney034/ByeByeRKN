@@ -51,6 +51,8 @@ public final class GoBackend implements Backend {
     private final Context context;
     @Nullable private Config currentConfig;
     @Nullable private Tunnel currentTunnel;
+    /** Dostup: the tunnel whose VPN interface another engine runs, see establishForeignTunnel. */
+    @Nullable private Tunnel foreignTunnel;
     private int currentTunnelHandle = -1;
     @Nullable private Thread statusThread;
     @Nullable private StatusCallback statusCallback;
@@ -91,7 +93,7 @@ public final class GoBackend implements Backend {
     public static void stopIdleService() {
         try {
             final VpnService service = vpnService.get(0, TimeUnit.NANOSECONDS);
-            if (service.owner == null || service.owner.currentTunnel == null)
+            if (service.owner == null || (service.owner.currentTunnel == null && service.owner.foreignTunnel == null))
                 service.stopSelf();
         } catch (final Exception ignored) { }
     }
@@ -375,26 +377,7 @@ public final class GoBackend implements Backend {
             if (config == null)
                 throw new BackendException(Reason.TUNNEL_MISSING_CONFIG);
 
-            if (VpnService.prepare(context) != null)
-                throw new BackendException(Reason.VPN_NOT_AUTHORIZED);
-
-            final VpnService service;
-            if (!vpnService.isDone()) {
-                Log.d(TAG, "Requesting to start VpnService");
-                final Intent intent = new Intent(context, VpnService.class);
-                if (foregroundNotification != null)
-                    context.startForegroundService(intent);
-                else
-                    context.startService(intent);
-            }
-
-            try {
-                service = vpnService.get(2, TimeUnit.SECONDS);
-            } catch (final TimeoutException e) {
-                final Exception be = new BackendException(Reason.UNABLE_TO_START_VPN);
-                be.initCause(e);
-                throw be;
-            }
+            final VpnService service = startVpnService();
             service.setOwner(this);
 
             if (currentTunnelHandle != -1) {
@@ -425,47 +408,7 @@ public final class GoBackend implements Backend {
             final String goConfig = config.toAwgUserspaceString();
 
             // Create the vpn tunnel with android API
-            final VpnService.Builder builder = service.getBuilder();
-            builder.setSession(tunnel.getName());
-
-            for (final String excludedApplication : config.getInterface().getExcludedApplications())
-                builder.addDisallowedApplication(excludedApplication);
-
-            for (final String includedApplication : config.getInterface().getIncludedApplications())
-                builder.addAllowedApplication(includedApplication);
-
-            for (final InetNetwork addr : config.getInterface().getAddresses())
-                builder.addAddress(addr.getAddress(), addr.getMask());
-
-            for (final InetAddress addr : config.getInterface().getDnsServers())
-                builder.addDnsServer(addr.getHostAddress());
-
-            for (final String dnsSearchDomain : config.getInterface().getDnsSearchDomains())
-                builder.addSearchDomain(dnsSearchDomain);
-
-            boolean sawDefaultRoute = false;
-            for (final Peer peer : config.getPeers()) {
-                for (final InetNetwork addr : peer.getAllowedIps()) {
-                    if (addr.getMask() == 0)
-                        sawDefaultRoute = true;
-                    builder.addRoute(addr.getAddress(), addr.getMask());
-                }
-            }
-
-            // "Kill-switch" semantics
-            if (!(sawDefaultRoute && config.getPeers().size() == 1)) {
-                builder.allowFamily(OsConstants.AF_INET);
-                builder.allowFamily(OsConstants.AF_INET6);
-            }
-
-            builder.setMtu(config.getInterface().getMtu().orElse(1280));
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                builder.setMetered(false);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-                service.setUnderlyingNetworks(null);
-
-            builder.setBlocking(true);
+            final VpnService.Builder builder = configureBuilder(service, tunnel, config);
             try (final ParcelFileDescriptor tun = builder.establish()) {
                 if (tun == null)
                     throw new BackendException(Reason.TUN_CREATION_ERROR);
@@ -501,6 +444,117 @@ public final class GoBackend implements Backend {
         }
 
         tunnel.onStateChange(state);
+    }
+
+    /** Dostup: split out of setStateInternal so another engine can start the service too. */
+    private VpnService startVpnService() throws Exception {
+        if (VpnService.prepare(context) != null)
+            throw new BackendException(Reason.VPN_NOT_AUTHORIZED);
+
+        if (!vpnService.isDone()) {
+            Log.d(TAG, "Requesting to start VpnService");
+            final Intent intent = new Intent(context, VpnService.class);
+            if (foregroundNotification != null)
+                context.startForegroundService(intent);
+            else
+                context.startService(intent);
+        }
+
+        try {
+            return vpnService.get(2, TimeUnit.SECONDS);
+        } catch (final TimeoutException e) {
+            final Exception be = new BackendException(Reason.UNABLE_TO_START_VPN);
+            be.initCause(e);
+            throw be;
+        }
+    }
+
+    /** Dostup: split out of setStateInternal so another engine gets the same VPN interface. */
+    private static VpnService.Builder configureBuilder(final VpnService service, final Tunnel tunnel, final Config config) {
+        final VpnService.Builder builder = service.getBuilder();
+        builder.setSession(tunnel.getName());
+
+        for (final String excludedApplication : config.getInterface().getExcludedApplications()) {
+            try {
+                builder.addDisallowedApplication(excludedApplication);
+            } catch (final android.content.pm.PackageManager.NameNotFoundException e) {
+                Log.w(TAG, "Not excluding " + excludedApplication + ": not installed");
+            }
+        }
+
+        for (final String includedApplication : config.getInterface().getIncludedApplications()) {
+            try {
+                builder.addAllowedApplication(includedApplication);
+            } catch (final android.content.pm.PackageManager.NameNotFoundException e) {
+                Log.w(TAG, "Not including " + includedApplication + ": not installed");
+            }
+        }
+
+        for (final InetNetwork addr : config.getInterface().getAddresses())
+            builder.addAddress(addr.getAddress(), addr.getMask());
+
+        for (final InetAddress addr : config.getInterface().getDnsServers())
+            builder.addDnsServer(addr.getHostAddress());
+
+        for (final String dnsSearchDomain : config.getInterface().getDnsSearchDomains())
+            builder.addSearchDomain(dnsSearchDomain);
+
+        boolean sawDefaultRoute = false;
+        for (final Peer peer : config.getPeers()) {
+            for (final InetNetwork addr : peer.getAllowedIps()) {
+                if (addr.getMask() == 0)
+                    sawDefaultRoute = true;
+                builder.addRoute(addr.getAddress(), addr.getMask());
+            }
+        }
+
+        // "Kill-switch" semantics
+        if (!(sawDefaultRoute && config.getPeers().size() == 1)) {
+            builder.allowFamily(OsConstants.AF_INET);
+            builder.allowFamily(OsConstants.AF_INET6);
+        }
+
+        builder.setMtu(config.getInterface().getMtu().orElse(1280));
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            builder.setMetered(false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+            service.setUnderlyingNetworks(null);
+
+        builder.setBlocking(true);
+        return builder;
+    }
+
+    /**
+     * Dostup: brings up a VPN interface described by the interface part and allowed IPs of
+     * {@code config} for another engine, the MASQUE core, which takes over the returned
+     * descriptor. A running AmneziaWG tunnel goes down first; the VpnService keeps running.
+     * Call {@link #releaseForeignTunnel()} once the engine has stopped.
+     */
+    public ParcelFileDescriptor establishForeignTunnel(final Tunnel tunnel, final Config config) throws Exception {
+        if (currentTunnel != null)
+            setStateInternal(currentTunnel, null, State.DOWN, false);
+        final VpnService service = startVpnService();
+        service.setOwner(this);
+        final ParcelFileDescriptor tun = configureBuilder(service, tunnel, config).establish();
+        if (tun == null)
+            throw new BackendException(Reason.TUN_CREATION_ERROR);
+        foreignTunnel = tunnel;
+        return tun;
+    }
+
+    /** Dostup: the engine behind {@link #establishForeignTunnel} has stopped. */
+    public void releaseForeignTunnel() {
+        foreignTunnel = null;
+    }
+
+    /** Dostup: excludes a socket of another engine from the VPN. False when no VpnService runs. */
+    public static boolean protectFd(final int fd) {
+        try {
+            return vpnService.get(0, TimeUnit.NANOSECONDS).protect(fd);
+        } catch (final Exception e) {
+            return false;
+        }
     }
 
     /**
@@ -579,6 +633,12 @@ public final class GoBackend implements Backend {
                     owner.currentTunnelHandle = -1;
                     owner.currentConfig = null;
                     tunnel.onStateChange(State.DOWN);
+                }
+                // Dostup: the service going away (revoked, another VPN) ends a foreign engine's tunnel too.
+                final Tunnel foreign = owner.foreignTunnel;
+                if (foreign != null) {
+                    owner.foreignTunnel = null;
+                    foreign.onStateChange(State.DOWN);
                 }
             }
             vpnService = vpnService.newIncompleteFuture();

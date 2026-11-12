@@ -1,4 +1,220 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">ByeByeRKN</string>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="ru">
+    <!-- Russian is the default; English lives in values-en. These are the same in every language. -->
+    <string name="app_name" translatable="false">ByeByeRKN</string>
+    <string name="add_blocked_summary" translatable="false">Telegram, YouTube, Discord, Instagram, WhatsApp</string>
+    <string name="dns" translatable="false">DNS</string>
+    <string name="dns_cloudflare" translatable="false">Cloudflare</string>
+    <string name="dns_google" translatable="false">Google</string>
+    <string name="dns_quad9" translatable="false">Quad9</string>
+    <string name="obf_quic" translatable="false">QUIC</string>
+    <string name="obf_stun" translatable="false">STUN</string>
+    <string name="obf_dns" translatable="false">DNS</string>
+    <string name="obf_sip" translatable="false">SIP</string>
+    <string name="net_wifi" translatable="false">Wi-Fi</string>
+    <string name="net_ethernet" translatable="false">Ethernet</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Главная</string>
+    <string name="nav_apps">Приложения</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="toast_vpn_permission_needed">Без разрешения на VPN подключиться не получится</string>
+
+    <!-- Home -->
+    <string name="action_connect">Подключиться</string>
+    <string name="action_disconnect">Отключиться</string>
+    <string name="status_connecting">Подключение…</string>
+    <string name="status_idle_hint">Сервер и маскировка подберутся сами</string>
+    <string name="status_connected">Подключено · %1$s</string>
+    <string name="status_connected_unverified">Подключено без проверки трафика · %1$s</string>
+    <string name="status_degraded">Лучшего маршрута нет: Telegram может не работать</string>
+    <string name="split_tunnel">Раздельный туннель</string>
+    <string name="split_chip_off">Раздельный туннель выключен</string>
+    <plurals name="split_chip_direct">
+        <item quantity="one">Напрямую: %d прил.</item>
+        <item quantity="few">Напрямую: %d прил.</item>
+        <item quantity="many">Напрямую: %d прил.</item>
+        <item quantity="other">Напрямую: %d прил.</item>
+    </plurals>
+    <plurals name="split_chip_only">
+        <item quantity="one">Через VPN только %d прил.</item>
+        <item quantity="few">Через VPN только %d прил.</item>
+        <item quantity="many">Через VPN только %d прил.</item>
+        <item quantity="other">Через VPN только %d прил.</item>
+    </plurals>
+    <string name="update_available">Доступна версия %1$s</string>
+    <string name="server_custom">Свой конфиг</string>
+    <string name="server_auto">Сервер выберется автоматически</string>
+    <string name="stat_ping">Пинг</string>
+    <string name="stat_received">Получено</string>
+    <string name="stat_sent">Отправлено</string>
+    <string name="unit_ms">%1$d мс</string>
+    <string name="size_bytes">%1$d Б</string>
+    <string name="size_kb">%1$.1f КБ</string>
+    <string name="size_mb">%1$.1f МБ</string>
+    <string name="size_gb">%1$.2f ГБ</string>
+
+    <!-- Apps -->
+    <string name="tab_all">Все</string>
+    <string name="tab_except">Кроме</string>
+    <string name="tab_only">Только</string>
+    <string name="split_all_hint">Весь трафик телефона идёт через VPN.</string>
+    <string name="split_exclude_hint">Отмеченные приложения работают напрямую, остальные через VPN. Удобно для банков, Госуслуг и маркетплейсов.</string>
+    <string name="split_include_hint">Через VPN идут только отмеченные приложения, всё остальное напрямую.</string>
+    <string name="apply_now">Применить сейчас</string>
+    <string name="apply_now_summary">Переподключить VPN с новыми настройками</string>
+    <string name="quick_pick">Быстрый выбор</string>
+    <string name="add_russian_services">Добавить российские сервисы</string>
+    <string name="add_russian_services_summary">Банки, Госуслуги, маркетплейсы, Яндекс, VK</string>
+    <string name="add_blocked">Добавить заблокированные</string>
+    <string name="clear_all">Снять все отметки</string>
+    <string name="apps_count">Приложения · отмечено %1$d из %2$d</string>
+    <string name="search_apps">Поиск приложения</string>
+
+    <!-- Settings -->
+    <string name="toast_config_failed">Не удалось получить конфиг: %1$s</string>
+    <string name="custom_in_use">Используется свой конфиг</string>
+    <string name="custom_in_use_summary">WARP, маскировка и подбор сервера отключены</string>
+    <string name="back_to_warp">Вернуться к WARP</string>
+    <string name="section_shade">Шторка уведомлений</string>
+    <string name="tile_title">Плитка «ByeByeRKN»</string>
+    <string name="tile_added">Добавлена в шторку</string>
+    <string name="tile_add">Добавить в панель быстрых настроек</string>
+    <string name="toast_tile_added">Плитка добавлена в шторку</string>
+    <string name="toast_tile_manual">Откройте шторку, нажмите карандаш и перетащите плитку «ByeByeRKN» в панель</string>
+    <string name="section_config">Конфиг для AmneziaWG</string>
+    <string name="share_config">Поделиться конфигом</string>
+    <string name="share_config_summary">Файл byebyerkn.conf</string>
+    <string name="copy_config">Скопировать конфиг</string>
+    <string name="toast_config_copied">Конфиг скопирован</string>
+    <string name="import_config">Импортировать из буфера</string>
+    <string name="import_config_summary">Свой сервер вместо WARP</string>
+    <string name="toast_config_imported">Конфиг импортирован</string>
+    <string name="err_clipboard_empty">В буфере обмена нет текста</string>
+    <string name="err_not_a_config">Это не похоже на конфиг WireGuard/AmneziaWG: %1$s</string>
+    <string name="section_advanced">Для опытных</string>
+    <string name="advanced_show">Показать ручные настройки</string>
+    <string name="advanced_hide">Скрыть ручные настройки</string>
+    <string name="advanced_summary">Обычно не нужны: приложение подбирает всё само</string>
+    <string name="section_connection">Подключение</string>
+    <string name="disguise">Маскировка</string>
+    <string name="disguise_auto_summary">Подбирается под вашу сеть</string>
+    <string name="auto">Авто</string>
+    <string name="manual">Вручную</string>
+    <string name="server">Сервер</string>
+    <string name="server_manual_summary">Свой адрес WARP</string>
+    <string name="server_auto_summary">Подбирается автоматически</string>
+    <string name="address_port">Адрес:порт</string>
+    <string name="quic_site">Сайт для QUIC-маски</string>
+    <string name="quic_site_random">Случайный популярный сайт</string>
+    <string name="quic_site_hint">Первый пакет будет похож на HTTP/3-запрос к этому сайту. Пусто — случайный из %1$s и других.</string>
+    <string name="repick_server">Подобрать сервер заново</string>
+    <string name="repick_server_summary">При следующем подключении</string>
+    <string name="toast_repick_server">При следующем подключении сервер подберётся заново</string>
+    <string name="section_account">Аккаунт WARP</string>
+    <string name="reregister">Зарегистрироваться заново</string>
+    <string name="reregister_summary">Новый ключ и адрес WARP</string>
+    <string name="reregister_summary_none">Регистрация будет при первом подключении</string>
+    <string name="reregister_dialog_title">Новая регистрация</string>
+    <string name="reregister_dialog_text">Будет создан новый ключ и адрес WARP. Старые экспортированные конфиги продолжат работать, пока их не отключит Cloudflare.</string>
+    <string name="reregister_confirm">Сбросить</string>
+    <string name="toast_reregister">Новая регистрация будет при следующем подключении</string>
+    <string name="section_about">О приложении</string>
+    <string name="language">Язык</string>
+    <string name="licenses">Лицензии</string>
+    <string name="licenses_summary">amneziawg-android, amneziawg-go и usque (Apache-2.0 / MIT), на основе WireGuard®. Не связано с Cloudflare; WARP — сервис Cloudflare, Inc.</string>
+    <string name="save">Сохранить</string>
+    <string name="cancel">Отмена</string>
+    <string name="dns_adguard">AdGuard (без рекламы)</string>
+
+    <!-- Disguises -->
+    <string name="obf_light">Лёгкая</string>
+    <string name="obf_light_summary">Несколько мусорных пакетов перед рукопожатием</string>
+    <string name="obf_quic_summary">Первый пакет — HTTP/3 к обычному сайту</string>
+    <string name="obf_stun_summary">Первый пакет — как в видеозвонках WebRTC</string>
+    <string name="obf_dns_summary">Первый пакет — DNS-запрос</string>
+    <string name="obf_sip_summary">Первый пакет — как в IP-телефонии</string>
+    <string name="obf_heavy">Усиленная</string>
+    <string name="obf_heavy_summary">Много мусорных пакетов, для жёстких сетей</string>
+    <string name="obf_none">Без маскировки</string>
+    <string name="obf_none_summary">Обычный WireGuard</string>
+
+    <!-- Connection progress and errors -->
+    <string name="st_registering">Регистрация в WARP…</string>
+    <string name="st_registering_retry">Регистрация в WARP: пробую обходной путь…</string>
+    <string name="st_reregistering">Обновляю регистрацию в WARP…</string>
+    <string name="st_registering_masque">Регистрация для MASQUE…</string>
+    <string name="st_checking_known">Проверяю известные маршруты…</string>
+    <string name="st_scanning">Ищу сервер (%1$s): %2$d из %3$d, ответили %4$d</string>
+    <string name="st_connecting_route">Подключаюсь: %1$s · %2$s</string>
+    <string name="st_connecting_masque">Подключаюсь через MASQUE (%1$s)…</string>
+    <string name="st_connecting_custom">Подключаюсь по своему конфигу…</string>
+    <string name="st_connection_lost">Связь пропала (%1$s), ищу другой сервер…</string>
+    <string name="st_network_changed">Сеть сменилась (%1$s), подключаюсь…</string>
+    <string name="st_survey">Замер выхода: %1$s</string>
+    <string name="custom_endpoint">свой конфиг</string>
+    <string name="err_whitelist">Похоже, оператор включил белые списки: открыты только разрешённые сайты, VPN так не пройдёт.</string>
+    <string name="err_no_server">Ни один сервер не ответил.</string>
+    <string name="err_register">Не удалось зарегистрироваться в WARP: %1$s. Если API Cloudflare недоступен в вашей сети, импортируйте готовый конфиг в настройках.</string>
+    <string name="err_background">Android не дал включить VPN в фоне. Нажмите «Подключиться».</string>
+    <string name="err_custom_no_handshake">Сервер из импортированного конфига не ответил на рукопожатие.</string>
+    <string name="err_retry_in">%1$s Повторю через %2$s.</string>
+    <string name="err_vpn_not_authorized">Нет разрешения на VPN. Нажмите «Подключиться» ещё раз и разрешите подключение.</string>
+    <string name="err_vpn_service">Система не запустила VPN-службу. Попробуйте ещё раз.</string>
+    <string name="err_tun">Не удалось создать VPN-интерфейс. Возможно, включён другой VPN или «Постоянный VPN» другого приложения.</string>
+    <string name="err_dns_resolution">Не удалось определить адрес сервера %1$s.</string>
+    <string name="err_tunnel_start">Туннель не запустился (код %1$s).</string>
+    <string name="err_vpn_generic">Ошибка VPN: %1$s</string>
+    <string name="reason_failover_test">проверка переключения</string>
+    <string name="reason_route_worse">маршрут стал хуже</string>
+    <string name="reason_stale_handshake">рукопожатие не обновлялось %1$d с</string>
+    <string name="reason_no_replies">данные уходят, а ответов нет</string>
+    <string name="duration_seconds">%1$d с</string>
+    <string name="duration_minutes">%1$d мин</string>
+
+    <!-- Networks -->
+    <string name="net_cellular">мобильная сеть</string>
+    <string name="net_other">другая сеть</string>
+    <string name="net_none">нет сети</string>
+
+    <!-- Notification and tile -->
+    <string name="notification_channel_description">Показывает, что VPN работает</string>
+    <string name="notification_connected">Подключено</string>
+    <string name="notification_retrying">Нет связи, пробую снова…</string>
+    <string name="tile_error">Ошибка</string>
+    <string name="tile_disconnected">Отключено</string>
+
+    <!-- Background work -->
+    <string name="section_background">Работа в фоне</string>
+    <string name="battery_unrestricted">Без ограничений батареи</string>
+    <string name="battery_unrestricted_on">Разрешено: Android не остановит VPN ради экономии заряда</string>
+    <string name="battery_unrestricted_off">Android может остановить VPN ради экономии заряда. Нажмите, чтобы разрешить</string>
+    <string name="autostart">Автозапуск</string>
+    <string name="autostart_summary">Включите для ByeByeRKN, иначе система телефона выгружает VPN</string>
+    <string name="maker_battery">Контроль активности</string>
+    <string name="maker_battery_summary">Выберите «Нет ограничений»</string>
+    <string name="background_chip">Разрешите работу в фоне</string>
+
+    <!-- WARP+ -->
+    <string name="warp_plus_key">Ключ WARP+</string>
+    <string name="warp_plus_none">Не указан: обычный бесплатный WARP</string>
+    <string name="warp_plus_dialog_text">Ключ даёт ускоренные маршруты WARP+ и привязывается к устройствам приложения. Без ключа всё работает так же, на бесплатном WARP. Пустое поле — забыть ключ.</string>
+    <string name="warp_plus_checking">Проверяю ключ…</string>
+    <string name="warp_plus_on">WARP+ включён</string>
+    <string name="warp_plus_accepted">Ключ принят, но Cloudflare не включил WARP+ для этого аккаунта</string>
+    <string name="warp_plus_failed">Ключ не подошёл: %1$s</string>
+    <string name="warp_plus_bad_format">Ключ выглядит так: xxxxxxxx-xxxxxxxx-xxxxxxxx</string>
+    <string name="warp_plus_invalid">Cloudflare не принял ключ: он неверный</string>
+    <string name="warp_plus_unreachable">Не удалось связаться с Cloudflare. Попробуйте позже или с включённым VPN</string>
+    <string name="warp_plus_forgotten">Ключ забыт. Чтобы вернуться к бесплатному WARP, зарегистрируйтесь заново</string>
+
+    <!-- Sharing -->
+    <string name="section_share">Раздача VPN</string>
+    <string name="share_vpn">Раздавать VPN</string>
+    <string name="share_vpn_summary">Ноутбук или телевизор в точке доступа телефона пойдут через VPN. Работает, пока VPN подключён</string>
+    <string name="share_address">Адрес прокси</string>
+    <string name="share_no_hotspot">Включите на телефоне точку доступа, USB- или Bluetooth-модем</string>
+    <string name="share_protocols">HTTP и SOCKS5, без пароля</string>
+    <string name="share_how">Как подключить</string>
+    <string name="share_how_summary">Компьютер: в настройках сети укажите прокси HTTP с этим адресом и портом. Телевизор: настройки этой сети Wi-Fi → Прокси → Вручную. Через прокси идёт только TCP: игры и звонки пойдут мимо VPN.</string>
 </resources>

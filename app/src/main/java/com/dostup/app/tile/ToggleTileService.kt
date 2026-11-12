@@ -60,10 +60,10 @@ class ToggleTileService : TileService() {
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             tile.subtitle = when (status) {
-                is VpnStatus.Connected -> "متصل"
-                is VpnStatus.Working -> "در حال اتصال…"
-                is VpnStatus.Failed -> "خطا"
-                VpnStatus.Disconnected -> "قطع شده"
+                is VpnStatus.Connected -> getString(R.string.notification_connected)
+                is VpnStatus.Working -> getString(R.string.status_connecting)
+                is VpnStatus.Failed -> getString(R.string.tile_error)
+                VpnStatus.Disconnected -> getString(R.string.tile_disconnected)
             }
         }
         tile.updateTile()

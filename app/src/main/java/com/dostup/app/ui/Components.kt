@@ -1,7 +1,10 @@
 package com.dostup.app.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -16,6 +19,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,6 +30,9 @@ import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
+
+/** Lists stop growing here, so a TV or tablet doesn't stretch rows across the whole screen. */
+val MaxContentWidth = 720.dp
 
 /** Roomier than Miuix's default 16dp so dense settings stay readable on a dark background. */
 val RowMargin = PaddingValues(horizontal = 20.dp, vertical = 18.dp)
@@ -64,11 +72,17 @@ fun RowDivider() {
 @Composable
 fun RowScope.NavItem(selected: Boolean, onClick: () -> Unit, icon: ImageVector, label: String) {
     val color by animateColorAsState(if (selected) Palette.brand else Palette.textQuaternary, label = "nav")
+    val interaction = remember { MutableInteractionSource() }
+    // No ripple on touch, but a remote or keyboard has to see which tab it is on.
+    val focused by interaction.collectIsFocusedAsState()
     Column(
         Modifier
             .weight(1f)
-            .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-            .padding(top = 10.dp, bottom = 8.dp),
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (focused) Palette.bgSurfaceAlt else Color.Transparent)
+            .clickable(interaction, indication = null, onClick = onClick)
+            .padding(top = 8.dp, bottom = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(icon, contentDescription = null, Modifier.size(26.dp), tint = color)

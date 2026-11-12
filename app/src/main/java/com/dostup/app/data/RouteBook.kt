@@ -1,5 +1,6 @@
 package com.dostup.app.data
 
+import com.dostup.app.masque.MasqueRoute
 import com.dostup.app.probe.WarpEndpoints
 import org.json.JSONArray
 import org.json.JSONObject
@@ -14,8 +15,33 @@ import org.json.JSONObject
 class RouteBook(
     private val routes: MutableList<Route> = mutableListOf(),
     private val badFamilies: MutableMap<String, Long> = hashMapOf(),
+    private var masque: MasqueResult? = null,
+    /** When every MASQUE route failed here, so searches skip it for a while. */
+    private var masqueFailedAt: Long = 0,
 ) {
     class Route(val candidate: Candidate, val good: Boolean, val okAt: Long, val failures: Int)
+
+    class MasqueResult(val route: MasqueRoute, val good: Boolean, val okAt: Long, val failures: Int)
+
+    /** The MASQUE route that was fully good here, worth trying before a fresh scan. */
+    fun knownMasque(now: Long): MasqueRoute? = masque?.takeIf { it.good && now - it.okAt < ROUTE_TTL_MS }?.route
+
+    fun isMasqueFailing(now: Long): Boolean = now - masqueFailedAt < BAD_FAMILY_TTL_MS
+
+    fun recordMasqueSuccess(route: MasqueRoute, good: Boolean, now: Long) {
+        masque = MasqueResult(route, good, now, 0)
+        masqueFailedAt = 0
+    }
+
+    fun recordMasqueFailure(route: MasqueRoute) {
+        val known = masque?.takeIf { it.route == route } ?: return
+        masque = if (known.failures + 1 >= MAX_FAILURES) null else MasqueResult(route, known.good, known.okAt, known.failures + 1)
+    }
+
+    /** Every MASQUE route was tried here and none connected. */
+    fun recordMasqueUnreachable(now: Long) {
+        masqueFailedAt = now
+    }
 
     /** Remembered routes worth trying, the most trustworthy first. */
     fun known(now: Long): List<Candidate> = routes
@@ -61,11 +87,13 @@ class RouteBook(
     /**
      * Which of the endpoints that answered a probe to try, in order: one per address family,
      * since the exit depends on the family, and families already known to be bad go last.
+     * Among the rest IPv6 goes after IPv4: on mobile it answered a probe while the tunnel over it
+     * then never completed a handshake, which cost a full timeout.
      */
     fun attemptOrder(hits: List<Candidate>, now: Long): List<Candidate> {
         val perFamily = hits.distinctBy { WarpEndpoints.familyOf(it.endpoint) }
         val (bad, fresh) = perFamily.partition { isBadFamily(it.endpoint, now) }
-        return fresh + bad
+        return fresh.sortedBy { WarpEndpoints.familyOf(it.endpoint) == WarpEndpoints.V6_FAMILY } + bad
     }
 
     private fun trim(now: Long) {
@@ -80,6 +108,12 @@ class RouteBook(
             }
         })
         .put("bad", JSONObject().apply { badFamilies.forEach { (family, at) -> put(family, at) } })
+        .put("masqueFailedAt", masqueFailedAt)
+        .apply {
+            masque?.let {
+                put("masque", JSONObject().put("route", it.route.name).put("good", it.good).put("okAt", it.okAt).put("failures", it.failures))
+            }
+        }
         .toString()
 
     companion object {
@@ -104,7 +138,13 @@ class RouteBook(
             val bad = hashMapOf<String, Long>()
             val badJson = root.getJSONObject("bad")
             badJson.keys().forEach { bad[it] = badJson.getLong(it) }
-            RouteBook(routes, bad)
+            // Books saved before MASQUE existed simply have no MASQUE results.
+            val masque = root.optJSONObject("masque")?.let {
+                runCatching {
+                    MasqueResult(MasqueRoute.valueOf(it.getString("route")), it.getBoolean("good"), it.getLong("okAt"), it.getInt("failures"))
+                }.getOrNull()
+            }
+            RouteBook(routes, bad, masque, root.optLong("masqueFailedAt", 0))
         }.getOrDefault(RouteBook())
     }
 }

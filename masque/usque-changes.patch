@@ -1,0 +1,129 @@
+diff --git a/api/masque.go b/api/masque.go
+index 6b2c5d9..f3cdb1e 100644
+--- a/api/masque.go
++++ b/api/masque.go
+@@ -11,6 +11,7 @@ import (
+ 	"net/http"
+ 	"net/url"
+ 	"strings"
++	"syscall"
+ 
+ 	connectip "github.com/Diniboy1123/connect-ip-go"
+ 	"github.com/quic-go/quic-go"
+@@ -19,6 +20,12 @@ import (
+ 	"golang.org/x/net/http2"
+ )
+ 
++// SocketControl, when set, sees every socket the tunnel opens before it is used.
++//
++// Dostup: on Android the tunnel runs inside the app's own VPN, so each socket has to be excluded
++// from it (VpnService.protect) or the tunnel would route into itself.
++var SocketControl func(network, address string, c syscall.RawConn) error
++
+ // PrepareTlsConfig creates a TLS configuration using the provided certificate and SNI (Server Name Indication).
+ // It also verifies the peer's public key against the provided public key.
+ //
+@@ -161,22 +168,16 @@ func ConnectTunnel(ctx context.Context, tlsConfig *tls.Config, quicConfig *quic.
+ }
+ 
+ func connectTunnelHTTP3(ctx context.Context, tlsConfig *tls.Config, quicConfig *quic.Config, template *uritemplate.Template, additionalHeaders http.Header, endpoint *net.UDPAddr) (*net.UDPConn, *http3.Transport, *connectip.Conn, *http.Response, error) {
+-	var udpConn *net.UDPConn
+-	var err error
++	// Dostup: a ListenConfig instead of net.ListenUDP, so SocketControl sees the socket.
++	local := (&net.UDPAddr{IP: net.IPv4zero}).String()
+ 	if endpoint.IP.To4() == nil {
+-		udpConn, err = net.ListenUDP("udp", &net.UDPAddr{
+-			IP:   net.IPv6zero,
+-			Port: 0,
+-		})
+-	} else {
+-		udpConn, err = net.ListenUDP("udp", &net.UDPAddr{
+-			IP:   net.IPv4zero,
+-			Port: 0,
+-		})
++		local = (&net.UDPAddr{IP: net.IPv6zero}).String()
+ 	}
++	packetConn, err := (&net.ListenConfig{Control: SocketControl}).ListenPacket(ctx, "udp", local)
+ 	if err != nil {
+-		return udpConn, nil, nil, nil, err
++		return nil, nil, nil, nil, err
+ 	}
++	udpConn := packetConn.(*net.UDPConn)
+ 
+ 	// without ConnectionIDLength set, backend occasionally throws PROTOCOL_VIOLATION
+ 	// and that closes our connection
+@@ -240,7 +241,7 @@ func newHTTP2Client(baseTLSConfig *tls.Config, endpoint *net.TCPAddr, connectURI
+ 	if proxyURL == nil {
+ 		transport := &http2.Transport{
+ 			DialTLSContext: func(ctx context.Context, network, _ string, _ *tls.Config) (net.Conn, error) {
+-				dialer := &net.Dialer{}
++				dialer := &net.Dialer{Control: SocketControl} // Dostup: see SocketControl
+ 				conn, err := dialer.DialContext(ctx, network, endpoint.String())
+ 				if err != nil {
+ 					return nil, err
+@@ -260,7 +261,7 @@ func newHTTP2Client(baseTLSConfig *tls.Config, endpoint *net.TCPAddr, connectURI
+ 
+ 	originAuthority := authorityWithDefaultPort(parsedURI, "443")
+ 	proxyAuthority := authorityWithDefaultPort(proxyURL, proxyDefaultPort(proxyURL))
+-	dialer := &net.Dialer{}
++	dialer := &net.Dialer{Control: SocketControl} // Dostup: see SocketControl
+ 	transport := &http.Transport{
+ 		Proxy:              http.ProxyFromEnvironment,
+ 		ForceAttemptHTTP2:  true,
+diff --git a/api/tunnel.go b/api/tunnel.go
+index 5f06187..513cdf9 100644
+--- a/api/tunnel.go
++++ b/api/tunnel.go
+@@ -180,6 +180,18 @@ type MaintainTunnelConfig struct {
+ 	// parent process env for OnConnect / OnDisconnect invocations. USQUE_EVENT
+ 	// and USQUE_ENDPOINT are set by MaintainTunnel itself.
+ 	HookEnv map[string]string
++	// Dostup: in-process notifications, for an embedding app that reports the tunnel's state.
++	// OnConnected runs after every successful connect; OnDisconnected after every failed
++	// attempt and every loss of the tunnel.
++	OnConnected    func()
++	OnDisconnected func(err error)
++}
++
++// notifyDisconnected reports err through cfg.OnDisconnected when it is set. Dostup.
++func notifyDisconnected(cfg MaintainTunnelConfig, err error) {
++	if cfg.OnDisconnected != nil {
++		cfg.OnDisconnected(err)
++	}
+ }
+ 
+ // cloneHookEnv returns a shallow copy of src so concurrent hook invocations
+@@ -264,6 +276,7 @@ func MaintainTunnel(ctx context.Context, cfg MaintainTunnelConfig) {
+ 		)
+ 		if err != nil {
+ 			log.Printf("Failed to connect tunnel: %v", err)
++			notifyDisconnected(cfg, err)
+ 			if ipConn != nil {
+ 				_ = ipConn.Close()
+ 			}
+@@ -280,6 +293,7 @@ func MaintainTunnel(ctx context.Context, cfg MaintainTunnelConfig) {
+ 		}
+ 		if rsp.StatusCode != 200 {
+ 			log.Printf("Tunnel connection failed: %s", rsp.Status)
++			notifyDisconnected(cfg, fmt.Errorf("tunnel connection failed: %s", rsp.Status))
+ 			_ = ipConn.Close()
+ 			if tr != nil {
+ 				_ = tr.Close()
+@@ -294,6 +308,9 @@ func MaintainTunnel(ctx context.Context, cfg MaintainTunnelConfig) {
+ 		}
+ 
+ 		log.Println("Connected to MASQUE server")
++		if cfg.OnConnected != nil {
++			cfg.OnConnected()
++		}
+ 
+ 		if cfg.OnConnect != "" {
+ 			env := cloneHookEnv(cfg.HookEnv)
+@@ -377,6 +394,7 @@ func MaintainTunnel(ctx context.Context, cfg MaintainTunnelConfig) {
+ 
+ 		err = <-errChan
+ 		log.Printf("Tunnel connection lost: %v. Reconnecting...", err)
++		notifyDisconnected(cfg, err)
+ 
+ 		if cfg.OnDisconnect != "" {
+ 			env := cloneHookEnv(cfg.HookEnv)

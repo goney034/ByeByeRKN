@@ -34,7 +34,10 @@ internal class PrimaryNetwork<T : Any> {
  * Wi-Fi). The app's own default network is the VPN itself, so this watches non-VPN networks
  * and treats the best one (Wi-Fi, then Ethernet, then cellular) as the one in use.
  */
-class NetworkWatcher(private val context: Context, private val onChange: (label: String) -> Unit) {
+/** What kind of network the phone uses under the VPN. */
+enum class NetworkKind { WIFI, ETHERNET, CELLULAR, OTHER, NONE }
+
+class NetworkWatcher(private val context: Context, private val onChange: (kind: NetworkKind) -> Unit) {
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
     private val networks = HashMap<Network, NetworkCapabilities>()
     private val primary = PrimaryNetwork<Network>()
@@ -94,13 +97,13 @@ class NetworkWatcher(private val context: Context, private val onChange: (label:
     }
 
     private fun recompute() {
-        val (next, label) = synchronized(networks) {
-            networks.entries.minByOrNull { rank(it.value) }?.let { it.key to label(it.value) } ?: (null to "بدون شبکه")
+        val (next, kind) = synchronized(networks) {
+            networks.entries.minByOrNull { rank(it.value) }?.let { it.key to kind(it.value) } ?: (null to NetworkKind.NONE)
         }
         if (next == primary.current) return
         val changed = primary.moveTo(next)
-        Log.i(TAG, "underlying network: $label")
-        if (changed) onChange(label)
+        Log.i(TAG, "underlying network: $kind")
+        if (changed) onChange(kind)
     }
 
     private fun rank(c: NetworkCapabilities) = when {
@@ -110,11 +113,11 @@ class NetworkWatcher(private val context: Context, private val onChange: (label:
         else -> 3
     }
 
-    private fun label(c: NetworkCapabilities) = when {
-        c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "Wi-Fi"
-        c.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet"
-        c.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "شبکه موبایل"
-        else -> "شبکه دیگر"
+    private fun kind(c: NetworkCapabilities) = when {
+        c.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkKind.WIFI
+        c.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetworkKind.ETHERNET
+        c.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> NetworkKind.CELLULAR
+        else -> NetworkKind.OTHER
     }
 
     private companion object {

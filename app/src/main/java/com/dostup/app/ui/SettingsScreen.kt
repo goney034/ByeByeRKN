@@ -4,6 +4,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,28 +17,41 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dostup.app.BuildConfig
+import com.dostup.app.R
 import com.dostup.app.awg.Obfuscation
 import com.dostup.app.awg.QuicMask
 import com.dostup.app.data.DnsOption
 import com.dostup.app.data.Store
+import com.dostup.app.share.ShareProxy
+import com.dostup.app.share.TetherInterfaces
+import com.dostup.app.system.BackgroundWork
 import com.dostup.app.tile.ToggleTileService
 import com.dostup.app.vpn.VpnController
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.amnezia.awg.config.Config
@@ -50,16 +65,20 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.extra.SuperArrow
 import top.yukonga.miuix.kmp.extra.SuperDialog
 import top.yukonga.miuix.kmp.extra.SuperDropdown
+import top.yukonga.miuix.kmp.extra.SuperSwitch
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import java.io.BufferedReader
 import java.io.File
 import java.io.StringReader
+
+private const val SHARE_REFRESH_MS = 3_000L
 
 private val ENDPOINT_PATTERN = Regex("""^(\[[0-9a-fA-F:]+]|[\w.\-]+):\d{1,5}$""")
 
 @Composable
 fun SettingsScreen(vpn: VpnController, store: Store) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val settings by store.settings.collectAsStateWithLifecycle()
     var customConfig by remember { mutableStateOf(store.customConfig) }
@@ -69,32 +88,47 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
     var confirmReset by remember { mutableStateOf(false) }
     var editSni by remember { mutableStateOf(false) }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
+    var editWarpPlus by remember { mutableStateOf(false) }
+    var warpPlusKey by remember { mutableStateOf(store.warpPlusKey) }
+    var batteryOk by remember { mutableStateOf(BackgroundWork.batteryUnrestricted(context)) }
+    // The answer comes from a system screen: read it again whenever the user is back.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { batteryOk = BackgroundWork.batteryUnrestricted(context) }
+    val autostart = remember { BackgroundWork.autostartIntent(context) }
+    val makerBattery = remember { BackgroundWork.makerBatteryIntent(context) }
+    var shareAddresses by remember { mutableStateOf(emptyList<String>()) }
+    // A hotspot can be switched on while this screen is open.
+    LaunchedEffect(settings.shareVpn) {
+        while (settings.shareVpn) {
+            shareAddresses = withContext(Dispatchers.IO) { TetherInterfaces.addresses(context).mapNotNull { it.hostAddress } }
+            delay(SHARE_REFRESH_MS)
+        }
+    }
     val scrollBehavior = MiuixScrollBehavior()
 
     fun withConfig(action: (String) -> Unit) {
         scope.launch {
             val text = runCatching { withContext(Dispatchers.IO) { vpn.exportConfig() } }
-            text.onSuccess(action).onFailure { toast(context, "دریافت کانفیگ ناموفق بود: ${it.message}") }
+            text.onSuccess(action).onFailure { toast(context, resources.getString(R.string.toast_config_failed, it.message.orEmpty())) }
         }
     }
 
     Column(Modifier.fillMaxSize().background(Palette.bgBase)) {
-        TopAppBar(title = "تنظیمات", scrollBehavior = scrollBehavior)
+        TopAppBar(title = stringResource(R.string.nav_settings), scrollBehavior = scrollBehavior)
         LazyColumn(
-            Modifier.fillMaxSize().overScrollVertical().nestedScroll(scrollBehavior.nestedScrollConnection),
+            Modifier.align(Alignment.CenterHorizontally).widthIn(max = MaxContentWidth).fillMaxSize().overScrollVertical().nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 32.dp),
         ) {
             if (customConfig != null) {
                 item {
                     SectionCard(Modifier.padding(top = 12.dp)) {
                         BasicComponent(
-                            title = "کانفیگ سفارشی در حال استفاده است",
-                            summary = "WARP، پنهان‌سازی و انتخاب سرور غیرفعال هستند",
+                            title = stringResource(R.string.custom_in_use),
+                            summary = stringResource(R.string.custom_in_use_summary),
                             insideMargin = RowMargin,
                         )
                         RowDivider()
                         SuperArrow(
-                            title = "بازگشت به WARP",
+                            title = stringResource(R.string.back_to_warp),
                             titleColor = BasicComponentDefaults.titleColor(color = Palette.brand),
                             insideMargin = RowMargin,
                             onClick = {
@@ -107,58 +141,121 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
             }
 
             item {
-                SectionTitle("پرده‌ی اعلان‌ها")
+                SectionTitle(stringResource(R.string.section_shade))
                 SectionCard {
                     SuperArrow(
-                        title = "کاشی «ByeByeRKN»",
-                        summary = if (tileAdded) "به پرده‌ی اعلان اضافه شد" else "افزودن به پنل تنظیمات سریع",
+                        title = stringResource(R.string.tile_title),
+                        summary = if (tileAdded) stringResource(R.string.tile_added) else stringResource(R.string.tile_add),
                         insideMargin = RowMargin,
                         onClick = {
                             if (tileAdded) return@SuperArrow
                             val asked = ToggleTileService.requestAdd(context) { added ->
                                 tileAdded = added
-                                if (added) toast(context, "کاشی به پرده‌ی اعلان اضافه شد")
+                                if (added) toast(context, resources.getString(R.string.toast_tile_added))
                             }
-                            if (!asked) toast(context, "پرده‌ی اعلان را باز کنید، روی مداد بزنید و کاشی «ByeByeRKN» را به پنل بکشید")
+                            if (!asked) toast(context, resources.getString(R.string.toast_tile_manual))
                         },
                     )
                 }
             }
 
             item {
-                SectionTitle("کانفیگ برای AmneziaWG")
+                SectionTitle(stringResource(R.string.section_background))
                 SectionCard {
                     SuperArrow(
-                        title = "اشتراک‌گذاری کانفیگ",
-                        summary = "فایل byebyerkn.conf",
+                        title = stringResource(R.string.battery_unrestricted),
+                        summary = stringResource(if (batteryOk) R.string.battery_unrestricted_on else R.string.battery_unrestricted_off),
+                        insideMargin = RowMargin,
+                        onClick = {
+                            if (batteryOk) BackgroundWork.openBatterySettings(context) else BackgroundWork.requestBatteryUnrestricted(context)
+                        },
+                    )
+                    autostart?.let { intent ->
+                        RowDivider()
+                        SuperArrow(
+                            title = stringResource(R.string.autostart),
+                            summary = stringResource(R.string.autostart_summary),
+                            insideMargin = RowMargin,
+                            onClick = { BackgroundWork.start(context, intent) },
+                        )
+                    }
+                    makerBattery?.let { intent ->
+                        RowDivider()
+                        SuperArrow(
+                            title = stringResource(R.string.maker_battery),
+                            summary = stringResource(R.string.maker_battery_summary),
+                            insideMargin = RowMargin,
+                            onClick = { BackgroundWork.start(context, intent) },
+                        )
+                    }
+                }
+            }
+
+            item {
+                SectionTitle(stringResource(R.string.section_share))
+                SectionCard {
+                    SuperSwitch(
+                        title = stringResource(R.string.share_vpn),
+                        summary = stringResource(R.string.share_vpn_summary),
+                        checked = settings.shareVpn,
+                        onCheckedChange = { on -> store.updateSettings { it.copy(shareVpn = on) } },
+                        insideMargin = RowMargin,
+                    )
+                    if (settings.shareVpn) {
+                        RowDivider()
+                        BasicComponent(
+                            title = stringResource(R.string.share_address),
+                            summary = if (shareAddresses.isEmpty()) {
+                                stringResource(R.string.share_no_hotspot)
+                            } else {
+                                shareAddresses.joinToString("\n") { "$it:${ShareProxy.DEFAULT_PORT}" } + "\n" + stringResource(R.string.share_protocols)
+                            },
+                            insideMargin = RowMargin,
+                        )
+                        RowDivider()
+                        BasicComponent(
+                            title = stringResource(R.string.share_how),
+                            summary = stringResource(R.string.share_how_summary),
+                            insideMargin = RowMargin,
+                        )
+                    }
+                }
+            }
+
+            item {
+                SectionTitle(stringResource(R.string.section_config))
+                SectionCard {
+                    SuperArrow(
+                        title = stringResource(R.string.share_config),
+                        summary = stringResource(R.string.share_config_summary),
                         insideMargin = RowMargin,
                         onClick = { withConfig { shareConfig(context, it) } },
                     )
                     RowDivider()
                     SuperArrow(
-                        title = "کپی کانفیگ",
+                        title = stringResource(R.string.copy_config),
                         insideMargin = RowMargin,
                         onClick = {
                             withConfig {
                                 copyToClipboard(context, it)
-                                toast(context, "کانفیگ کپی شد")
+                                toast(context, resources.getString(R.string.toast_config_copied))
                             }
                         },
                     )
                     RowDivider()
                     SuperArrow(
-                        title = "وارد کردن از کلیپ‌بورد",
-                        summary = "سرور شخصی به‌جای WARP",
+                        title = stringResource(R.string.import_config),
+                        summary = stringResource(R.string.import_config_summary),
                         insideMargin = RowMargin,
                         onClick = {
                             val text = readClipboard(context)
-                            val error = validateConfig(text)
+                            val error = validateConfig(context, text)
                             if (error != null) {
                                 toast(context, error)
                             } else {
                                 store.customConfig = text
                                 customConfig = text
-                                toast(context, "کانفیگ وارد شد")
+                                toast(context, resources.getString(R.string.toast_config_imported))
                             }
                         },
                     )
@@ -166,11 +263,11 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
             }
 
             item {
-                SectionTitle("برای کاربران حرفه‌ای")
+                SectionTitle(stringResource(R.string.section_advanced))
                 SectionCard {
                     SuperArrow(
-                        title = if (showAdvanced) "پنهان کردن تنظیمات دستی" else "نمایش تنظیمات دستی",
-                        summary = "معمولاً لازم نیست: برنامه همه‌چیز را خودکار انتخاب می‌کند",
+                        title = if (showAdvanced) stringResource(R.string.advanced_hide) else stringResource(R.string.advanced_show),
+                        summary = stringResource(R.string.advanced_summary),
                         insideMargin = RowMargin,
                         onClick = { showAdvanced = !showAdvanced },
                     )
@@ -179,22 +276,22 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
 
             if (showAdvanced) {
                 item {
-                    SectionTitle("اتصال")
+                    SectionTitle(stringResource(R.string.section_connection))
                     SectionCard {
                         val obfuscations = listOf<Obfuscation?>(null) + Obfuscation.entries
                         SuperDropdown(
-                            title = "پنهان‌سازی",
-                            summary = settings.obfuscation?.summary ?: "متناسب با شبکه‌ی شما انتخاب می‌شود",
-                            items = obfuscations.map { it?.title ?: "خودکار" },
+                            title = stringResource(R.string.disguise),
+                            summary = settings.obfuscation?.let { stringResource(it.summaryRes) } ?: stringResource(R.string.disguise_auto_summary),
+                            items = obfuscations.map { it?.let { o -> stringResource(o.titleRes) } ?: stringResource(R.string.auto) },
                             selectedIndex = obfuscations.indexOf(settings.obfuscation),
                             insideMargin = RowMargin,
                             onSelectedIndexChange = { index -> store.updateSettings { it.copy(obfuscation = obfuscations[index]) } },
                         )
                         RowDivider()
                         SuperDropdown(
-                            title = "سرور",
-                            summary = if (manualEndpoint) "آدرس WARP شخصی" else "خودکار انتخاب می‌شود",
-                            items = listOf("خودکار", "دستی"),
+                            title = stringResource(R.string.server),
+                            summary = if (manualEndpoint) stringResource(R.string.server_manual_summary) else stringResource(R.string.server_auto_summary),
+                            items = listOf(stringResource(R.string.auto), stringResource(R.string.manual)),
                             selectedIndex = if (manualEndpoint) 1 else 0,
                             insideMargin = RowMargin,
                             onSelectedIndexChange = { index ->
@@ -213,7 +310,7 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                                         store.updateSettings { it.copy(manualEndpoint = endpointText) }
                                     }
                                 },
-                                label = "آدرس:پورت",
+                                label = stringResource(R.string.address_port),
                                 singleLine = true,
                                 backgroundColor = Palette.bgSheet,
                                 borderColor = if (ENDPOINT_PATTERN.matches(endpointText)) Palette.brand else Palette.danger,
@@ -222,39 +319,46 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                         }
                         RowDivider()
                         SuperDropdown(
-                            title = "DNS",
+                            title = stringResource(R.string.dns),
                             summary = settings.dns.servers.take(2).joinToString(),
-                            items = DnsOption.entries.map { it.title },
+                            items = DnsOption.entries.map { stringResource(it.titleRes) },
                             selectedIndex = settings.dns.ordinal,
                             insideMargin = RowMargin,
                             onSelectedIndexChange = { index -> store.updateSettings { it.copy(dns = DnsOption.entries[index]) } },
                         )
                         RowDivider()
                         SuperArrow(
-                            title = "سایت برای ماسک QUIC",
-                            summary = settings.quicSni.ifBlank { "یک سایت محبوب تصادفی" },
+                            title = stringResource(R.string.quic_site),
+                            summary = settings.quicSni.ifBlank { stringResource(R.string.quic_site_random) },
                             insideMargin = RowMargin,
                             onClick = { editSni = true },
                         )
                         RowDivider()
                         SuperArrow(
-                            title = "انتخاب دوباره‌ی سرور",
-                            summary = "در اتصال بعدی",
+                            title = stringResource(R.string.repick_server),
+                            summary = stringResource(R.string.repick_server_summary),
                             insideMargin = RowMargin,
                             onClick = {
                                 vpn.forgetServer()
-                                toast(context, "در اتصال بعدی سرور دوباره انتخاب می‌شود")
+                                toast(context, resources.getString(R.string.toast_repick_server))
                             },
                         )
                     }
                 }
 
                 item {
-                    SectionTitle("حساب WARP")
+                    SectionTitle(stringResource(R.string.section_account))
                     SectionCard {
                         SuperArrow(
-                            title = "ثبت‌نام دوباره",
-                            summary = if (store.account != null) "کلید و آدرس WARP جدید" else "ثبت‌نام در اولین اتصال انجام می‌شود",
+                            title = stringResource(R.string.warp_plus_key),
+                            summary = warpPlusKey?.let(::maskKey) ?: stringResource(R.string.warp_plus_none),
+                            insideMargin = RowMargin,
+                            onClick = { editWarpPlus = true },
+                        )
+                        RowDivider()
+                        SuperArrow(
+                            title = stringResource(R.string.reregister),
+                            summary = if (store.account != null) stringResource(R.string.reregister_summary) else stringResource(R.string.reregister_summary_none),
                             insideMargin = RowMargin,
                             onClick = { confirmReset = true },
                         )
@@ -263,24 +367,53 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
             }
 
             item {
-                SectionTitle("درباره‌ی برنامه")
+                SectionTitle(stringResource(R.string.section_about))
                 SectionCard {
                     BasicComponent(
                         title = "ByeByeRKN ${BuildConfig.VERSION_NAME}",
                         summary = "AmneziaWG ${vpn.awgVersion}",
                         insideMargin = RowMargin,
                     )
+                    // Android 13+ keeps a language per app; older versions follow the system language.
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        RowDivider()
+                        SuperArrow(
+                            title = stringResource(R.string.language),
+                            summary = currentLanguageName(),
+                            insideMargin = RowMargin,
+                            onClick = { openLanguageSettings(context) },
+                        )
+                    }
                     RowDivider()
                     BasicComponent(
-                        title = "مجوزها",
-                        summary = "amneziawg-android و amneziawg-go (Apache-2.0 / MIT)، بر پایه‌ی WireGuard®. " +
-                            "ارتباطی با Cloudflare ندارد؛ WARP سرویس Cloudflare, Inc. است.",
+                        title = stringResource(R.string.licenses),
+                        summary = stringResource(R.string.licenses_summary),
                         insideMargin = RowMargin,
                     )
                 }
             }
         }
     }
+
+    WarpPlusDialog(
+        show = editWarpPlus,
+        current = warpPlusKey.orEmpty(),
+        onDismiss = { editWarpPlus = false },
+        onSave = { value ->
+            editWarpPlus = false
+            scope.launch {
+                val message = if (value.isBlank()) {
+                    vpn.forgetWarpPlusKey()
+                    resources.getString(R.string.warp_plus_forgotten)
+                } else {
+                    toast(context, resources.getString(R.string.warp_plus_checking))
+                    vpn.setWarpPlusKey(value)
+                }
+                warpPlusKey = store.warpPlusKey
+                toast(context, message)
+            }
+        },
+    )
 
     SniDialog(
         show = editSni,
@@ -294,30 +427,54 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
 
     SuperDialog(
         show = confirmReset,
-        title = "ثبت‌نام جدید",
-        summary = "کلید و آدرس WARP جدیدی ساخته می‌شود. کانفیگ‌های صادرشده‌ی قبلی تا زمانی که Cloudflare آن‌ها را غیرفعال نکند کار می‌کنند.",
+        title = stringResource(R.string.reregister_dialog_title),
+        summary = stringResource(R.string.reregister_dialog_text),
         onDismissRequest = { confirmReset = false },
     ) {
         DialogButtons(
-            confirm = "بازنشانی",
+            confirm = stringResource(R.string.reregister_confirm),
             onDismiss = { confirmReset = false },
             onConfirm = {
                 confirmReset = false
                 vpn.resetAccount()
-                toast(context, "ثبت‌نام جدید در اتصال بعدی انجام می‌شود")
+                toast(context, resources.getString(R.string.toast_reregister))
             },
         )
     }
 }
 
 @Composable
+private fun WarpPlusDialog(show: Boolean, current: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var draft by remember(show) { mutableStateOf(current) }
+    SuperDialog(
+        show = show,
+        title = stringResource(R.string.warp_plus_key),
+        summary = stringResource(R.string.warp_plus_dialog_text),
+        onDismissRequest = onDismiss,
+    ) {
+        TextField(
+            value = draft,
+            onValueChange = { draft = it.trim() },
+            label = "xxxxxxxx-xxxxxxxx-xxxxxxxx",
+            useLabelAsPlaceholder = true,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(16.dp))
+        DialogButtons(confirm = stringResource(R.string.save), onDismiss = onDismiss, onConfirm = { onSave(draft) })
+    }
+}
+
+/** Enough of the key to recognise it, not to copy it from a screenshot. */
+private fun maskKey(key: String) = "${key.take(4)}…${key.takeLast(4)}"
+
+@Composable
 private fun SniDialog(show: Boolean, current: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     var draft by remember(show) { mutableStateOf(current) }
     SuperDialog(
         show = show,
-        title = "سایت برای ماسک QUIC",
-        summary = "بسته‌ی اول شبیه یک درخواست HTTP/3 به این سایت خواهد بود. " +
-            "اگر خالی باشد، یکی از ${QuicMask.defaultSni.take(3).joinToString()} و سایت‌های دیگر به‌صورت تصادفی انتخاب می‌شود.",
+        title = stringResource(R.string.quic_site),
+        summary = stringResource(R.string.quic_site_hint, QuicMask.defaultSni.take(3).joinToString()),
         onDismissRequest = onDismiss,
     ) {
         TextField(
@@ -329,14 +486,14 @@ private fun SniDialog(show: Boolean, current: String, onDismiss: () -> Unit, onS
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))
-        DialogButtons(confirm = "ذخیره", onDismiss = onDismiss, onConfirm = { onSave(draft) })
+        DialogButtons(confirm = stringResource(R.string.save), onDismiss = onDismiss, onConfirm = { onSave(draft) })
     }
 }
 
 @Composable
 private fun DialogButtons(confirm: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        TextButton(text = "انصراف", onClick = onDismiss, modifier = Modifier.weight(1f))
+        TextButton(text = stringResource(R.string.cancel), onClick = onDismiss, modifier = Modifier.weight(1f))
         TextButton(
             text = confirm,
             onClick = onConfirm,
@@ -346,14 +503,25 @@ private fun DialogButtons(confirm: String, onDismiss: () -> Unit, onConfirm: () 
     }
 }
 
-private fun validateConfig(text: String?): String? {
-    if (text.isNullOrBlank()) return "متنی در کلیپ‌بورد نیست"
+private fun validateConfig(context: Context, text: String?): String? {
+    if (text.isNullOrBlank()) return context.getString(R.string.err_clipboard_empty)
     return try {
         Config.parse(BufferedReader(StringReader(text)))
         null
     } catch (e: Exception) {
-        "این شبیه کانفیگ WireGuard/AmneziaWG نیست: ${e.message}"
+        context.getString(R.string.err_not_a_config, e.message.orEmpty())
     }
+}
+
+@Composable
+private fun currentLanguageName(): String {
+    val locale = LocalConfiguration.current.locales[0]
+    return locale.getDisplayLanguage(locale).replaceFirstChar { it.titlecase(locale) }
+}
+
+private fun openLanguageSettings(context: Context) {
+    val intent = Intent(android.provider.Settings.ACTION_APP_LOCALE_SETTINGS, Uri.fromParts("package", context.packageName, null))
+    runCatching { context.startActivity(intent) }
 }
 
 private fun shareConfig(context: Context, text: String) {
@@ -364,7 +532,7 @@ private fun shareConfig(context: Context, text: String) {
         .setType("text/plain")
         .putExtra(Intent.EXTRA_STREAM, uri)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    context.startActivity(Intent.createChooser(intent, "اشتراک‌گذاری کانفیگ"))
+    context.startActivity(Intent.createChooser(intent, context.getString(R.string.share_config)))
 }
 
 private fun copyToClipboard(context: Context, text: String) {

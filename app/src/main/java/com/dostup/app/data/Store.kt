@@ -1,10 +1,13 @@
 package com.dostup.app.data
 
 import android.content.Context
+import androidx.annotation.StringRes
+import com.dostup.app.R
 import com.dostup.app.awg.AwgParams
 import com.dostup.app.awg.Obfuscation
 import com.dostup.app.awg.hexToBytes
 import com.dostup.app.split.AppCatalog
+import com.dostup.app.warp.MasqueAccount
 import com.dostup.app.warp.WarpAccount
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,11 +16,11 @@ import org.json.JSONObject
 
 enum class SplitMode { ALL, EXCLUDE, INCLUDE }
 
-enum class DnsOption(val title: String, val servers: List<String>) {
-    CLOUDFLARE("Cloudflare", listOf("1.1.1.1", "1.0.0.1", "2606:4700:4700::1111", "2606:4700:4700::1001")),
-    GOOGLE("Google", listOf("8.8.8.8", "8.8.4.4", "2001:4860:4860::8888", "2001:4860:4860::8844")),
-    ADGUARD("AdGuard (بدون تبلیغ)", listOf("94.140.14.14", "94.140.15.15", "2a10:50c0::ad1:ff", "2a10:50c0::ad2:ff")),
-    QUAD9("Quad9", listOf("9.9.9.9", "149.112.112.112", "2620:fe::fe", "2620:fe::9")),
+enum class DnsOption(@StringRes val titleRes: Int, val servers: List<String>) {
+    CLOUDFLARE(R.string.dns_cloudflare, listOf("1.1.1.1", "1.0.0.1", "2606:4700:4700::1111", "2606:4700:4700::1001")),
+    GOOGLE(R.string.dns_google, listOf("8.8.8.8", "8.8.4.4", "2001:4860:4860::8888", "2001:4860:4860::8844")),
+    ADGUARD(R.string.dns_adguard, listOf("94.140.14.14", "94.140.15.15", "2a10:50c0::ad1:ff", "2a10:50c0::ad2:ff")),
+    QUAD9(R.string.dns_quad9, listOf("9.9.9.9", "149.112.112.112", "2620:fe::fe", "2620:fe::9")),
 }
 
 data class Settings(
@@ -31,6 +34,8 @@ data class Settings(
     val includedApps: Set<String> = AppCatalog.blockedServices,
     /** SNI for the QUIC mask; blank means a random popular site. */
     val quicSni: String = "",
+    /** A proxy for devices on the phone's hotspot, while the VPN is connected. */
+    val shareVpn: Boolean = false,
 )
 
 /** An endpoint plus obfuscation that is known to work (or worth trying). */
@@ -83,6 +88,7 @@ class Store(context: Context) {
             .putStringSet("excludedApps", next.excludedApps)
             .putStringSet("includedApps", next.includedApps)
             .putString("quicSni", next.quicSni)
+            .putBoolean("shareVpn", next.shareVpn)
             .apply()
         _settings.value = next
     }
@@ -90,6 +96,11 @@ class Store(context: Context) {
     var account: WarpAccount?
         get() = prefs.getString("account", null)?.let { runCatching { WarpAccount.fromJson(it) }.getOrNull() }
         set(value) = prefs.edit().putString("account", value?.toJson()).apply()
+
+    /** A WARP device of its own for MASQUE, registered the first time MASQUE is needed. */
+    var masqueAccount: MasqueAccount?
+        get() = prefs.getString("masqueAccount", null)?.let { runCatching { MasqueAccount.fromJson(it) }.getOrNull() }
+        set(value) = prefs.edit().putString("masqueAccount", value?.toJson()).apply()
 
     var lastGood: Candidate?
         get() = prefs.getString("lastGood", null)?.let { runCatching { Candidate.fromJson(it) }.getOrNull() }
@@ -117,6 +128,25 @@ class Store(context: Context) {
     var lastRegisterAt: Long
         get() = prefs.getLong("lastRegisterAt", 0)
         set(value) = prefs.edit().putLong("lastRegisterAt", value).apply()
+
+    /** A WARP+ key, bound to every WARP device the app registers. */
+    var warpPlusKey: String?
+        get() = prefs.getString("warpPlusKey", null)
+        set(value) = prefs.edit().putString("warpPlusKey", value).apply()
+
+    /** A newer, signed list of addresses and disguise sites than the built-in one. */
+    var catalogJson: String?
+        get() = prefs.getString("catalogJson", null)
+        set(value) = prefs.edit().putString("catalogJson", value).apply()
+
+    var catalogCheckedAt: Long
+        get() = prefs.getLong("catalogCheckedAt", 0)
+        set(value) = prefs.edit().putLong("catalogCheckedAt", value).apply()
+
+    /** When registering for MASQUE was last tried, so a blocked API doesn't slow every search. */
+    var masqueRegisterTriedAt: Long
+        get() = prefs.getLong("masqueRegisterTriedAt", 0)
+        set(value) = prefs.edit().putLong("masqueRegisterTriedAt", value).apply()
 
     /** A user-imported .conf that replaces the WARP account entirely. */
     var customConfig: String?
@@ -151,6 +181,7 @@ class Store(context: Context) {
             excludedApps = prefs.getStringSet("excludedApps", null)?.toSet() ?: defaults.excludedApps,
             includedApps = prefs.getStringSet("includedApps", null)?.toSet() ?: defaults.includedApps,
             quicSni = prefs.getString("quicSni", null) ?: defaults.quicSni,
+            shareVpn = prefs.getBoolean("shareVpn", defaults.shareVpn),
         )
     }
 

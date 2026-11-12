@@ -1,6 +1,7 @@
 package com.dostup.app.data
 
 import com.dostup.app.awg.Obfuscation
+import com.dostup.app.masque.MasqueRoute
 import com.dostup.app.probe.WarpEndpoints
 import com.dostup.app.vpn.ExitInfo
 import org.junit.Assert.assertEquals
@@ -76,6 +77,17 @@ class RouteBookTest {
     }
 
     @Test
+    fun ipv6IsTriedAfterIpv4ButBeforeKnownBadFamilies() {
+        val book = RouteBook()
+        book.recordSuccess(route("8.35.211.9:891"), good = false, now)
+        val hits = listOf(route("[2606:4700:d0::a29f:c009]:7103"), route("8.35.211.2:500"), route("162.159.192.8:891"))
+        assertEquals(
+            listOf("162.159.192.8:891", "[2606:4700:d0::a29f:c009]:7103", "8.35.211.2:500"),
+            book.attemptOrder(hits, now).map { it.endpoint },
+        )
+    }
+
+    @Test
     fun keepsOnlyTheBestRoutes() {
         val book = RouteBook()
         repeat(RouteBook.MAX_ROUTES + 3) { book.recordSuccess(route("162.159.192.${it + 1}:891"), good = true, now + it) }
@@ -91,6 +103,48 @@ class RouteBookTest {
         assertEquals(1200, restored.known(now).first().mtu)
         assertEquals(Obfuscation.QUIC, restored.known(now).first().params.obfuscation)
         assertTrue(restored.isBadFamily("8.35.211.1:1", now))
+    }
+
+    @Test
+    fun masqueThatWorkedIsRememberedAndSurvivesJson() {
+        val book = RouteBook()
+        book.recordMasqueSuccess(MasqueRoute.HTTP2, good = true, now)
+        val restored = RouteBook.fromJson(book.toJson())
+        assertEquals(MasqueRoute.HTTP2, restored.knownMasque(now))
+        assertEquals(null, restored.knownMasque(now + RouteBook.ROUTE_TTL_MS))
+    }
+
+    @Test
+    fun degradedMasqueIsNotTriedFirst() {
+        val book = RouteBook()
+        book.recordMasqueSuccess(MasqueRoute.HTTP3, good = false, now)
+        assertEquals(null, book.knownMasque(now))
+    }
+
+    @Test
+    fun masqueIsForgottenAfterRepeatedFailures() {
+        val book = RouteBook()
+        book.recordMasqueSuccess(MasqueRoute.HTTP3, good = true, now)
+        repeat(RouteBook.MAX_FAILURES) { book.recordMasqueFailure(MasqueRoute.HTTP3) }
+        assertEquals(null, book.knownMasque(now))
+    }
+
+    @Test
+    fun unreachableMasqueIsSkippedForADayAndClearedBySuccess() {
+        val book = RouteBook()
+        book.recordMasqueUnreachable(now)
+        assertTrue(RouteBook.fromJson(book.toJson()).isMasqueFailing(now + 1000))
+        assertFalse(book.isMasqueFailing(now + RouteBook.BAD_FAMILY_TTL_MS))
+        book.recordMasqueSuccess(MasqueRoute.HTTP3, good = false, now)
+        assertFalse(book.isMasqueFailing(now))
+    }
+
+    @Test
+    fun booksSavedBeforeMasqueStillLoad() {
+        val old = """{"routes":[],"bad":{"8.35.211.":$now}}"""
+        val book = RouteBook.fromJson(old)
+        assertTrue(book.isBadFamily("8.35.211.1:1", now))
+        assertEquals(null, book.knownMasque(now))
     }
 
     @Test

@@ -15,41 +15,32 @@ import kotlin.random.Random
 object WarpEndpoints {
     const val HOST = "engage.cloudflareclient.com"
 
-    val ports = listOf(
-        500, 854, 859, 864, 878, 880, 890, 891, 894, 903, 908, 928, 934, 939, 942, 943, 945, 946,
-        955, 968, 987, 988, 1002, 1010, 1014, 1018, 1070, 1074, 1180, 1387, 1701, 1843, 2371, 2408,
-        2506, 3138, 3476, 3581, 3854, 4177, 4198, 4233, 4500, 5279, 5956, 7103, 7152, 7156, 7281,
-        7559, 8319, 8742, 8854, 8886,
-    )
-
-    val prefixes = listOf(
-        "162.159.192.", "162.159.193.", "162.159.195.",
-        "188.114.96.", "188.114.97.", "188.114.98.", "188.114.99.",
-        "8.6.112.", "8.34.70.", "8.34.146.", "8.35.211.", "8.39.125.", "8.39.204.", "8.39.214.", "8.47.69.",
-    )
+    // The lists live in EndpointCatalog, so a newer signed copy can replace them at run time.
+    val ports: List<Int> get() = EndpointCatalog.current.ports
+    val prefixes: List<String> get() = EndpointCatalog.current.prefixes
 
     /**
      * IPv6 endpoints embed the IPv4 one in their last 32 bits: engage.cloudflareclient.com is
      * 2606:4700:d0::a29f:c001, i.e. 162.159.192.1. IPv6 is often filtered less than IPv4.
      */
-    val v6Prefixes = listOf("2606:4700:d0::a29f:c0", "2606:4700:d1::a29f:c0", "2606:4700:d0::a29f:c3", "2606:4700:d1::a29f:c3")
+    val v6Prefixes: List<String> get() = EndpointCatalog.current.v6Prefixes
 
-    private val wellKnown = listOf(
-        "162.159.192.1:2408", "162.159.195.1:500", "188.114.97.1:4500", "162.159.193.10:1701", "$HOST:2408",
-        "[2606:4700:d0::a29f:c001]:2408",
-    )
+    private val wellKnown: List<String> get() = EndpointCatalog.current.wellKnown
 
     /**
      * Covers every address family, because the data centre a route exits from depends on the
      * family. About one in five is IPv6, free to probe: unreachable ones fail instantly.
      */
     fun sample(count: Int, random: Random = Random.Default): List<String> {
+        val catalog = EndpointCatalog.current
         val result = LinkedHashSet(wellKnown)
         val families = prefixes.shuffled(random)
         var next = 0
-        while (result.size < count) {
+        // A small downloaded catalog may hold fewer distinct endpoints than asked for.
+        var draws = 0
+        while (result.size < count && draws++ < count * MAX_DRAWS_PER_ENDPOINT) {
             val port = ports.random(random)
-            result += if (random.nextInt(5) == 0) {
+            result += if (catalog.v6Prefixes.isNotEmpty() && random.nextInt(5) == 0) {
                 "[${v6Prefixes.random(random)}%02x]:$port".format(random.nextInt(1, 11))
             } else {
                 "${families[next++ % families.size]}${random.nextInt(1, 11)}:$port"
@@ -58,9 +49,12 @@ object WarpEndpoints {
         return result.toList()
     }
 
+    const val V6_FAMILY = "v6"
+    private const val MAX_DRAWS_PER_ENDPOINT = 20
+
     /** Routes in one family tend to share an exit, so results are judged per family. */
     fun familyOf(endpoint: String): String = when {
-        endpoint.startsWith("[") -> "v6"
+        endpoint.startsWith("[") -> V6_FAMILY
         endpoint.startsWith(HOST) -> "162.159.192." // what the hostname resolves to
         else -> endpoint.substringBeforeLast(':').substringBeforeLast('.') + "."
     }

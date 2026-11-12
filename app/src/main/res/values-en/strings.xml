@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_apps">Apps</string>
+    <string name="nav_settings">Settings</string>
+    <string name="toast_vpn_permission_needed">Can\'t connect without the VPN permission</string>
+
+    <!-- Home -->
+    <string name="action_connect">Connect</string>
+    <string name="action_disconnect">Disconnect</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_idle_hint">The server and disguise are picked automatically</string>
+    <string name="status_connected">Connected · %1$s</string>
+    <string name="status_connected_unverified">Connected without a traffic check · %1$s</string>
+    <string name="status_degraded">No better route found: Telegram may not work</string>
+    <string name="split_tunnel">Split tunnelling</string>
+    <string name="split_chip_off">Split tunnelling is off</string>
+    <plurals name="split_chip_direct">
+        <item quantity="one">Direct: %d app</item>
+        <item quantity="other">Direct: %d apps</item>
+    </plurals>
+    <plurals name="split_chip_only">
+        <item quantity="one">Only %d app through the VPN</item>
+        <item quantity="other">Only %d apps through the VPN</item>
+    </plurals>
+    <string name="update_available">Version %1$s is available</string>
+    <string name="server_custom">Own config</string>
+    <string name="server_auto">The server is picked automatically</string>
+    <string name="stat_ping">Ping</string>
+    <string name="stat_received">Received</string>
+    <string name="stat_sent">Sent</string>
+    <string name="unit_ms">%1$d ms</string>
+    <string name="size_bytes">%1$d B</string>
+    <string name="size_kb">%1$.1f KB</string>
+    <string name="size_mb">%1$.1f MB</string>
+    <string name="size_gb">%1$.2f GB</string>
+
+    <!-- Apps -->
+    <string name="tab_all">All</string>
+    <string name="tab_except">Except</string>
+    <string name="tab_only">Only</string>
+    <string name="split_all_hint">All of the phone\'s traffic goes through the VPN.</string>
+    <string name="split_exclude_hint">Checked apps go direct, everything else through the VPN. Handy for banking and government apps.</string>
+    <string name="split_include_hint">Only checked apps go through the VPN, everything else goes direct.</string>
+    <string name="apply_now">Apply now</string>
+    <string name="apply_now_summary">Reconnect the VPN with the new settings</string>
+    <string name="quick_pick">Quick pick</string>
+    <string name="add_russian_services">Add Russian services</string>
+    <string name="add_russian_services_summary">Banks, Gosuslugi, marketplaces, Yandex, VK</string>
+    <string name="add_blocked">Add blocked apps</string>
+    <string name="clear_all">Uncheck all</string>
+    <string name="apps_count">Apps · %1$d of %2$d checked</string>
+    <string name="search_apps">Search apps</string>
+
+    <!-- Settings -->
+    <string name="toast_config_failed">Couldn\'t get the config: %1$s</string>
+    <string name="custom_in_use">Using your own config</string>
+    <string name="custom_in_use_summary">WARP, disguise and server selection are off</string>
+    <string name="back_to_warp">Back to WARP</string>
+    <string name="section_shade">Notification shade</string>
+    <string name="tile_title">“ByeByeRKN” tile</string>
+    <string name="tile_added">Added to the shade</string>
+    <string name="tile_add">Add to Quick Settings</string>
+    <string name="toast_tile_added">The tile is in the shade</string>
+    <string name="toast_tile_manual">Open the shade, tap the pencil and drag the “ByeByeRKN” tile into the panel</string>
+    <string name="section_config">AmneziaWG config</string>
+    <string name="share_config">Share config</string>
+    <string name="share_config_summary">File byebyerkn.conf</string>
+    <string name="copy_config">Copy config</string>
+    <string name="toast_config_copied">Config copied</string>
+    <string name="import_config">Import from clipboard</string>
+    <string name="import_config_summary">Your own server instead of WARP</string>
+    <string name="toast_config_imported">Config imported</string>
+    <string name="err_clipboard_empty">There\'s no text in the clipboard</string>
+    <string name="err_not_a_config">This doesn\'t look like a WireGuard/AmneziaWG config: %1$s</string>
+    <string name="section_advanced">Advanced</string>
+    <string name="advanced_show">Show manual settings</string>
+    <string name="advanced_hide">Hide manual settings</string>
+    <string name="advanced_summary">Usually not needed: the app picks everything itself</string>
+    <string name="section_connection">Connection</string>
+    <string name="disguise">Disguise</string>
+    <string name="disguise_auto_summary">Picked for your network</string>
+    <string name="auto">Auto</string>
+    <string name="manual">Manual</string>
+    <string name="server">Server</string>
+    <string name="server_manual_summary">Your own WARP address</string>
+    <string name="server_auto_summary">Picked automatically</string>
+    <string name="address_port">Address:port</string>
+    <string name="quic_site">Site for the QUIC disguise</string>
+    <string name="quic_site_random">A random popular site</string>
+    <string name="quic_site_hint">The first packet will look like an HTTP/3 request to this site. Leave it empty for a random one of %1$s and others.</string>
+    <string name="repick_server">Pick the server again</string>
+    <string name="repick_server_summary">On the next connection</string>
+    <string name="toast_repick_server">The server will be picked again on the next connection</string>
+    <string name="section_account">WARP account</string>
+    <string name="reregister">Register again</string>
+    <string name="reregister_summary">New WARP key and address</string>
+    <string name="reregister_summary_none">Registration happens on the first connection</string>
+    <string name="reregister_dialog_title">New registration</string>
+    <string name="reregister_dialog_text">A new WARP key and address will be created. Configs exported earlier keep working until Cloudflare turns them off.</string>
+    <string name="reregister_confirm">Reset</string>
+    <string name="toast_reregister">A new registration will happen on the next connection</string>
+    <string name="section_about">About</string>
+    <string name="language">Language</string>
+    <string name="licenses">Licenses</string>
+    <string name="licenses_summary">amneziawg-android, amneziawg-go and usque (Apache-2.0 / MIT), based on WireGuard®. Not affiliated with Cloudflare; WARP is a service of Cloudflare, Inc.</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="dns_adguard">AdGuard (no ads)</string>
+
+    <!-- Disguises -->
+    <string name="obf_light">Light</string>
+    <string name="obf_light_summary">A few junk packets before the handshake</string>
+    <string name="obf_quic_summary">The first packet is HTTP/3 to an ordinary site</string>
+    <string name="obf_stun_summary">The first packet looks like a WebRTC video call</string>
+    <string name="obf_dns_summary">The first packet is a DNS query</string>
+    <string name="obf_sip_summary">The first packet looks like IP telephony</string>
+    <string name="obf_heavy">Heavy</string>
+    <string name="obf_heavy_summary">Lots of junk packets, for tough networks</string>
+    <string name="obf_none">No disguise</string>
+    <string name="obf_none_summary">Plain WireGuard</string>
+
+    <!-- Connection progress and errors -->
+    <string name="st_registering">Registering with WARP…</string>
+    <string name="st_registering_retry">Registering with WARP: trying a workaround…</string>
+    <string name="st_reregistering">Renewing the WARP registration…</string>
+    <string name="st_registering_masque">Registering for MASQUE…</string>
+    <string name="st_checking_known">Checking known routes…</string>
+    <string name="st_scanning">Looking for a server (%1$s): %2$d of %3$d, %4$d answered</string>
+    <string name="st_connecting_route">Connecting: %1$s · %2$s</string>
+    <string name="st_connecting_masque">Connecting over MASQUE (%1$s)…</string>
+    <string name="st_connecting_custom">Connecting with your own config…</string>
+    <string name="st_connection_lost">The connection dropped (%1$s), looking for another server…</string>
+    <string name="st_network_changed">The network changed (%1$s), connecting…</string>
+    <string name="st_survey">Measuring the exit: %1$s</string>
+    <string name="custom_endpoint">own config</string>
+    <string name="err_whitelist">Looks like the operator switched on a whitelist: only approved sites open, and a VPN can\'t get through.</string>
+    <string name="err_no_server">No server answered.</string>
+    <string name="err_register">Couldn\'t register with WARP: %1$s. If the Cloudflare API is unreachable on your network, import a ready config in Settings.</string>
+    <string name="err_background">Android didn\'t let the VPN start in the background. Tap “Connect”.</string>
+    <string name="err_custom_no_handshake">The server from the imported config didn\'t answer the handshake.</string>
+    <string name="err_retry_in">%1$s Retrying in %2$s.</string>
+    <string name="err_vpn_not_authorized">No VPN permission. Tap “Connect” again and allow the connection.</string>
+    <string name="err_vpn_service">The system didn\'t start the VPN service. Try again.</string>
+    <string name="err_tun">Couldn\'t create the VPN interface. Another VPN, or another app\'s always-on VPN, may be on.</string>
+    <string name="err_dns_resolution">Couldn\'t resolve the server address %1$s.</string>
+    <string name="err_tunnel_start">The tunnel didn\'t start (code %1$s).</string>
+    <string name="err_vpn_generic">VPN error: %1$s</string>
+    <string name="reason_failover_test">failover test</string>
+    <string name="reason_route_worse">the route got worse</string>
+    <string name="reason_stale_handshake">no fresh handshake for %1$d s</string>
+    <string name="reason_no_replies">data goes out, nothing comes back</string>
+    <string name="duration_seconds">%1$d s</string>
+    <string name="duration_minutes">%1$d min</string>
+
+    <!-- Networks -->
+    <string name="net_cellular">mobile network</string>
+    <string name="net_other">another network</string>
+    <string name="net_none">no network</string>
+
+    <!-- Notification and tile -->
+    <string name="notification_channel_description">Shows that the VPN is running</string>
+    <string name="notification_connected">Connected</string>
+    <string name="notification_retrying">No connection, retrying…</string>
+    <string name="tile_error">Error</string>
+    <string name="tile_disconnected">Disconnected</string>
+
+    <!-- Background work -->
+    <string name="section_background">Background work</string>
+    <string name="battery_unrestricted">No battery restrictions</string>
+    <string name="battery_unrestricted_on">Allowed: Android won\'t stop the VPN to save battery</string>
+    <string name="battery_unrestricted_off">Android may stop the VPN to save battery. Tap to allow</string>
+    <string name="autostart">Autostart</string>
+    <string name="autostart_summary">Turn it on for ByeByeRKN, or the phone\'s system stops the VPN</string>
+    <string name="maker_battery">Battery saver for the app</string>
+    <string name="maker_battery_summary">Choose “No restrictions”</string>
+    <string name="background_chip">Allow background work</string>
+
+    <!-- WARP+ -->
+    <string name="warp_plus_key">WARP+ key</string>
+    <string name="warp_plus_none">Not set: regular free WARP</string>
+    <string name="warp_plus_dialog_text">The key gives faster WARP+ routes and is bound to the app\'s devices. Without a key everything works the same on free WARP. Leave the field empty to forget the key.</string>
+    <string name="warp_plus_checking">Checking the key…</string>
+    <string name="warp_plus_on">WARP+ is on</string>
+    <string name="warp_plus_accepted">The key was accepted, but Cloudflare didn\'t turn on WARP+ for this account</string>
+    <string name="warp_plus_failed">The key didn\'t work: %1$s</string>
+    <string name="warp_plus_bad_format">A key looks like this: xxxxxxxx-xxxxxxxx-xxxxxxxx</string>
+    <string name="warp_plus_invalid">Cloudflare didn\'t accept the key: it\'s not valid</string>
+    <string name="warp_plus_unreachable">Couldn\'t reach Cloudflare. Try again later or with the VPN on</string>
+    <string name="warp_plus_forgotten">The key is forgotten. To go back to free WARP, register again</string>
+
+    <!-- Sharing -->
+    <string name="section_share">Share the VPN</string>
+    <string name="share_vpn">Share the VPN</string>
+    <string name="share_vpn_summary">A laptop or TV on the phone\'s hotspot goes through the VPN. Works while the VPN is connected</string>
+    <string name="share_address">Proxy address</string>
+    <string name="share_no_hotspot">Turn on the phone\'s hotspot, USB or Bluetooth tethering</string>
+    <string name="share_protocols">HTTP and SOCKS5, no password</string>
+    <string name="share_how">How to connect</string>
+    <string name="share_how_summary">Computer: set this address and port as the HTTP proxy in its network settings. TV: settings of this Wi-Fi network → Proxy → Manual. Only TCP goes through the proxy: games and calls bypass the VPN.</string>
+</resources>

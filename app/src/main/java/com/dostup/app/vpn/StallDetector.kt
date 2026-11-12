@@ -18,11 +18,17 @@ class StallDetector(
 
     fun reset() = samples.clear()
 
+    /** Why a session should be checked. */
+    sealed interface Suspicion {
+        data class StaleHandshake(val ageSec: Long) : Suspicion
+        data object NoReplies : Suspicion
+    }
+
     /** Returns why the session should be checked, or null while it looks healthy. */
-    fun update(nowMs: Long, rx: Long, tx: Long, lastHandshakeSec: Long): String? {
+    fun update(nowMs: Long, rx: Long, tx: Long, lastHandshakeSec: Long): Suspicion? {
         if (lastHandshakeSec > 0) {
             val age = nowMs / 1000 - lastHandshakeSec
-            if (age > maxHandshakeAgeSec) return "handshake به‌روز نشده است: $age ثانیه"
+            if (age > maxHandshakeAgeSec) return Suspicion.StaleHandshake(age)
         }
         // Counters restart when the tunnel is replaced; old samples are meaningless then.
         if (samples.isNotEmpty() && (rx < samples.last().rx || tx < samples.last().tx)) samples.clear()
@@ -33,6 +39,6 @@ class StallDetector(
         if (nowMs - oldest.atMs < windowMs * 3 / 4) return null // not enough history yet
         val sent = tx - oldest.tx
         val received = rx - oldest.rx
-        return if (sent >= minTxBytes && received == 0L) "داده ارسال می‌شود اما پاسخی نمی‌آید" else null
+        return if (sent >= minTxBytes && received == 0L) Suspicion.NoReplies else null
     }
 }

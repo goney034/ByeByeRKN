@@ -7,21 +7,28 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.PowerManager
 import android.util.Log
+import androidx.annotation.StringRes
+import com.dostup.app.R
 import com.dostup.app.awg.Obfuscation
+import com.dostup.app.awg.QuicMask
 import com.dostup.app.awg.SplitRule
 import com.dostup.app.awg.WarpConfig
 import com.dostup.app.data.Candidate
 import com.dostup.app.data.Settings
 import com.dostup.app.data.SplitMode
 import com.dostup.app.data.Store
+import com.dostup.app.masque.MasqueRoute
+import com.dostup.app.masque.MasqueTunnel
 import com.dostup.app.probe.EndpointScanner
 import com.dostup.app.probe.HandshakeProbe
 import com.dostup.app.probe.TelegramProbe
 import com.dostup.app.probe.WarpEndpoints
 import com.dostup.app.split.AppCatalog
+import com.dostup.app.warp.MasqueAccount
 import com.dostup.app.warp.WarpAccount
 import com.dostup.app.warp.WarpApi
 import com.dostup.app.warp.WarpApiException
+import com.dostup.app.warp.WarpPlusResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +41,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.ConnectionPool
 import okhttp3.Dns
 import okhttp3.OkHttpClient
@@ -62,6 +70,8 @@ sealed interface VpnStatus {
         val verified: Boolean,
         /** True when traffic flows but nothing better was found: it exits in Russia or Telegram doesn't answer. */
         val degraded: Boolean = false,
+        /** Set when the connection is MASQUE rather than AmneziaWG. */
+        val masque: MasqueRoute? = null,
     ) : VpnStatus
     data class Failed(val message: String) : VpnStatus
 }
@@ -96,6 +106,13 @@ class VpnController(private val context: Context, private val store: Store) {
     private var tunnelUp = false
     /** The route currently carrying traffic, so a failover can skip it. */
     private var current: Candidate? = null
+    /** Set instead of [current] while the MASQUE core carries traffic. */
+    private var currentMasque: MasqueRoute? = null
+    private val masque by lazy { MasqueTunnel(context) }
+    /** The MASQUE core owns the VPN interface; AmneziaWG is down. */
+    @Volatile private var masqueUp = false
+    /** The route the MASQUE core runs, connected or not. */
+    private var runningMasque: MasqueRoute? = null
     private var lastAutoSearchAt = 0L
     private val stallDetector = StallDetector()
     private val networks = NetworkWatcher(context, ::onNetworkChanged)
@@ -107,6 +124,8 @@ class VpnController(private val context: Context, private val store: Store) {
         override fun onStateChange(newState: Tunnel.State) {
             if (newState == Tunnel.State.DOWN) {
                 tunnelUp = false
+                // The VpnService went away under the MASQUE core: nothing is left for it to carry.
+                if (masqueUp) scope.launch { stopMasque() }
                 // Revoked by the system or replaced by another VPN app: don't fight over it.
                 if (_status.value is VpnStatus.Connected) {
                     monitorJob?.cancel()
@@ -162,11 +181,46 @@ class VpnController(private val context: Context, private val store: Store) {
 
     fun resetAccount() {
         store.account = null
+        store.masqueAccount = null
+        store.masqueRegisterTriedAt = 0
         forgetServer()
     }
 
     /** Debug builds only: pretend the current route died, to exercise the failover path. */
-    fun debugFailover() = failover("بررسی تعویض مسیر")
+    fun debugFailover() = failover(text(R.string.reason_failover_test))
+
+    /** Debug builds only: connects over one MASQUE route directly, skipping AmneziaWG. */
+    fun debugMasque(route: MasqueRoute, endpoint: String? = null) {
+        val previous = connectJob
+        store.wantConnected = true
+        connectJob = scope.launch {
+            previous?.cancelAndJoin()
+            monitorJob?.cancel()
+            try {
+                val settings = store.settings.value
+                val account = ensureMasqueAccount() ?: run {
+                    _status.value = VpnStatus.Failed("MASQUE: registration failed")
+                    return@launch
+                }
+                _status.value = VpnStatus.Working(text(R.string.st_connecting_masque, route.title))
+                val outcome = tryMasque(account, route, settings, splitRule(settings), endpoint)
+                val good = outcome == Outcome.OK && routeIsGood()
+                Log.i(TAG, "debug masque $route ${endpoint ?: account.endpointV4}: $outcome exit=${_exit.value?.colo} good=$good ($lastStages)")
+                if (outcome == Outcome.OK) {
+                    onConnectedMasque(account, route, degraded = !good)
+                } else {
+                    bringDown()
+                    _status.value = VpnStatus.Failed("MASQUE ($route): $outcome, ${masque.lastError ?: "no error"}")
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "debug masque failed", e)
+                bringDown()
+                _status.value = VpnStatus.Failed("MASQUE: ${e.message}")
+            }
+        }
+    }
 
     /** The config the app would use right now, for sharing with other AmneziaWG clients. */
     suspend fun exportConfig(): String {
@@ -184,19 +238,59 @@ class VpnController(private val context: Context, private val store: Store) {
     }
 
     private fun ensureAccount(): WarpAccount = store.account ?: run {
-        _status.value = VpnStatus.Working("ثبت‌نام در WARP…")
-        api.register(onRetry = { _status.value = VpnStatus.Working("ثبت‌نام در WARP: در حال امتحان مسیر جایگزین…") })
-            .also {
-                store.account = it
-                store.lastRegisterAt = System.currentTimeMillis()
+        _status.value = VpnStatus.Working(text(R.string.st_registering))
+        api.register(onRetry = { _status.value = VpnStatus.Working(text(R.string.st_registering_retry)) })
+            .also(::adoptAccount)
+    }
+
+    private fun adoptAccount(account: WarpAccount) {
+        store.account = account
+        store.lastRegisterAt = System.currentTimeMillis()
+        bindWarpPlus { api.applyLicense(account, it) }
+    }
+
+    /** A fresh device starts as free WARP: the stored WARP+ key, if any, goes on it too. */
+    private fun bindWarpPlus(apply: (String) -> WarpPlusResult) {
+        val key = store.warpPlusKey ?: return
+        runCatching { apply(key) }
+            .onSuccess { Log.i(TAG, "WARP+ key bound: ${it.accountType}") }
+            .onFailure { Log.w(TAG, "WARP+ key not bound: ${it.message}") }
+    }
+
+    /**
+     * Binds a WARP+ key to the app's WARP devices and remembers it for later registrations.
+     * Returns what to tell the user; a key Cloudflare rejects changes nothing.
+     */
+    suspend fun setWarpPlusKey(key: String): String = withContext(Dispatchers.IO) {
+        val license = key.trim()
+        if (!WarpApi.isLicense(license)) return@withContext text(R.string.warp_plus_bad_format)
+        try {
+            val account = store.account ?: api.register().also { store.account = it; store.lastRegisterAt = System.currentTimeMillis() }
+            val result = api.applyLicense(account, license)
+            store.masqueAccount?.let { masqueAccount -> runCatching { api.applyLicense(masqueAccount, license) } }
+            store.warpPlusKey = license
+            // Faster routes apply to new sessions.
+            if (_status.value is VpnStatus.Connected) reconnect()
+            text(if (result.warpPlus) R.string.warp_plus_on else R.string.warp_plus_accepted)
+        } catch (e: WarpApiException) {
+            when {
+                e.apiMessage?.contains("Invalid license", ignoreCase = true) == true -> text(R.string.warp_plus_invalid)
+                e.httpCode == null -> text(R.string.warp_plus_unreachable)
+                else -> text(R.string.warp_plus_failed, e.apiMessage ?: e.message.orEmpty())
             }
+        }
+    }
+
+    /** Forgets the key; the devices stay WARP+ until the app registers anew. */
+    fun forgetWarpPlusKey() {
+        store.warpPlusKey = null
     }
 
     /**
      * Connects from scratch, or, with [failed] set, replaces a dead route while the tunnel stays
      * up: probes bypass it via [GoBackend.protectSocket] and the new config swaps in place.
      */
-    private suspend fun connectInternal(failed: Candidate? = null, mayReregister: Boolean = true) {
+    private suspend fun connectInternal(failed: Candidate? = null, mayReregister: Boolean = true, failedMasque: MasqueRoute? = null) {
         monitorJob?.cancel()
         try {
             val settings = store.settings.value
@@ -206,30 +300,27 @@ class VpnController(private val context: Context, private val store: Store) {
                 return
             }
 
-            val search = RouteSearch(ensureAccount(), settings, split, failed, networks.awaitKey())
+            val search = RouteSearch(ensureAccount(), settings, split, failed, failedMasque, networks.awaitKey())
             if (search.run()) return
 
             // Handshakes that fail everywhere can mean Cloudflare no longer accepts this key.
             if (!search.sawHandshake && mayReregister && reregister()) {
-                connectInternal(failed, mayReregister = false)
+                connectInternal(failed, mayReregister = false, failedMasque = failedMasque)
                 return
             }
 
             bringDown(keepService = store.wantConnected)
             if (networks.isCellular && looksLikeWhitelist()) {
                 retryDelayS = MAX_RETRY_S
-                failAndRetry("به نظر می‌رسد اپراتور فهرست سفید فعال کرده است: فقط سایت‌های مجاز باز هستند و VPN از این مسیر کار نمی‌کند.")
+                failAndRetry(text(R.string.err_whitelist))
             } else {
-                failAndRetry("هیچ سروری پاسخ نداد.")
+                failAndRetry(text(R.string.err_no_server))
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: WarpApiException) {
             bringDown(keepService = store.wantConnected)
-            failAndRetry(
-                "ثبت‌نام در WARP ناموفق بود: ${e.message}. اگر API کلودفلر در شبکه‌ی شما در دسترس نیست، " +
-                    "در تنظیمات یک کانفیگ آماده وارد کنید.",
-            )
+            failAndRetry(text(R.string.err_register, e.message.orEmpty()))
         } catch (e: BackendException) {
             Log.w(TAG, "backend error", e)
             bringDown()
@@ -238,7 +329,7 @@ class VpnController(private val context: Context, private val store: Store) {
             // Android refuses to start the service for background apps; only the user can restart from here.
             Log.w(TAG, "cannot start VPN service from background", e)
             bringDown()
-            _status.value = VpnStatus.Failed("اندروید اجازه نداد VPN در پس‌زمینه روشن شود. روی «اتصال» بزنید.")
+            _status.value = VpnStatus.Failed(text(R.string.err_background))
         } catch (e: Exception) {
             Log.w(TAG, "connect failed", e)
             bringDown(keepService = store.wantConnected)
@@ -250,7 +341,7 @@ class VpnController(private val context: Context, private val store: Store) {
 
     /**
      * One climb up the ladder: routes that were good on this network, then every disguise in turn
-     * over the address families that haven't answered yet, then whatever worked at all.
+     * over the address families that haven't answered yet, then MASQUE, then whatever worked at all.
      * A route is GOOD only if traffic flows, it doesn't exit in Russia and Telegram answers.
      */
     private inner class RouteSearch(
@@ -258,6 +349,7 @@ class VpnController(private val context: Context, private val store: Store) {
         private val settings: Settings,
         private val split: SplitRule,
         private val failed: Candidate?,
+        private val failedMasque: MasqueRoute?,
         private val networkKey: String,
     ) {
         var sawHandshake = false
@@ -272,6 +364,9 @@ class VpnController(private val context: Context, private val store: Store) {
         private var handshakeOnly: Candidate? = null
         private var onTunnel: Candidate? = null
         private var mtuRetriesLeft = MTU_RETRY_CANDIDATES
+        /** A MASQUE route that carried traffic but exited badly, checked during this search. */
+        private var masqueDegraded: MasqueRoute? = null
+        private val triedMasque = mutableSetOf<MasqueRoute>()
 
         private fun now() = System.currentTimeMillis()
 
@@ -284,7 +379,7 @@ class VpnController(private val context: Context, private val store: Store) {
             // A probe tells in a moment which remembered routes still answer, without touching the tunnel.
             val remembered = book.knownGood(now()).filter { it.matches(settings) && !it.sameRoute(failed) }
             if (remembered.isNotEmpty()) {
-                _status.value = VpnStatus.Working("در حال بررسی مسیرهای شناخته‌شده…")
+                _status.value = VpnStatus.Working(text(R.string.st_checking_known))
                 val answered = scanner.scanRoutes(remembered.map { it.endpoint to it.params }).map { it.endpoint }
                 for (route in remembered) {
                     if (route.endpoint !in answered) {
@@ -293,6 +388,11 @@ class VpnController(private val context: Context, private val store: Store) {
                         return true
                     }
                 }
+            }
+
+            // MASQUE was what worked on this network: worth more than a fresh scan.
+            book.knownMasque(now())?.takeIf { it != failedMasque && masqueAllowed() }?.let { route ->
+                if (attemptMasque(route) == Quality.GOOD) return true
             }
 
             val endpoints = settings.manualEndpoint?.let(::listOf) ?: WarpEndpoints.sample(SCAN_ENDPOINTS)
@@ -305,7 +405,7 @@ class VpnController(private val context: Context, private val store: Store) {
                 // With a working route in hand, the heavy disguises aren't worth the battery.
                 if (degraded != null && index >= MASKS_WITH_FALLBACK) break
                 val hits = scanner.scan(remaining, listOf(mask.params(settings.quicSni))) { done, total, found ->
-                    _status.value = VpnStatus.Working("جست‌وجوی سرور (${mask.title}): $done از $total، پاسخ‌دهنده: $found")
+                    _status.value = VpnStatus.Working(text(R.string.st_scanning, text(mask.titleRes), done, total, found))
                 }
                 reached += hits.map { WarpEndpoints.familyOf(it.endpoint) }
                 val candidates = hits.map { Candidate(it.endpoint, it.params, it.rttMs) }.filterNot { it.sameRoute(failed) }
@@ -327,7 +427,59 @@ class VpnController(private val context: Context, private val store: Store) {
                 }
             }
 
+            // AmneziaWG found nothing good: MASQUE looks like HTTPS to Cloudflare and may exit elsewhere.
+            if (masqueAllowed()) {
+                var connected = false
+                for (route in MasqueRoute.entries) {
+                    if (route == failedMasque || route in triedMasque) continue
+                    val quality = attemptMasque(route)
+                    if (quality == Quality.GOOD) return true
+                    if (quality == Quality.DEGRADED) {
+                        connected = true
+                        break
+                    }
+                }
+                if (!connected && masqueDegraded == null) {
+                    book.recordMasqueUnreachable(now())
+                    store.saveRouteBook(networkKey, book)
+                }
+            }
+
             return settle()
+        }
+
+        /** Not when the user pinned AmneziaWG settings, nor where every MASQUE route failed lately. */
+        private fun masqueAllowed(): Boolean =
+            masque.available && settings.manualEndpoint == null && settings.obfuscation == null && !book.isMasqueFailing(now())
+
+        private suspend fun attemptMasque(route: MasqueRoute): Quality {
+            triedMasque += route
+            val account = ensureMasqueAccount() ?: return Quality.FAILED
+            _status.value = VpnStatus.Working(text(R.string.st_connecting_masque, route.title))
+            onTunnel = null
+            val outcome = tryMasque(account, route, settings, split)
+            val label = "masque $route"
+            when (outcome) {
+                Outcome.NO_HANDSHAKE, Outcome.HANDSHAKE_ONLY -> {
+                    Log.i(TAG, "$label: ${if (outcome == Outcome.NO_HANDSHAKE) "no connection" else "connected but no traffic"} ($lastStages)")
+                    book.recordMasqueFailure(route)
+                    store.saveRouteBook(networkKey, book)
+                    return Quality.FAILED
+                }
+                Outcome.OK -> {
+                    val checkStarted = now()
+                    val good = routeIsGood()
+                    Log.i(TAG, "$label: exit=${_exit.value?.colo} good=$good ($lastStages, check ${now() - checkStarted} ms)")
+                    book.recordMasqueSuccess(route, good, now())
+                    store.saveRouteBook(networkKey, book)
+                    if (good) {
+                        onConnectedMasque(account, route, degraded = false)
+                        return Quality.GOOD
+                    }
+                    if (masqueDegraded == null) masqueDegraded = route
+                    return Quality.DEGRADED
+                }
+            }
         }
 
         /** Nothing fully good: use the best thing found rather than leave the user without a VPN. */
@@ -339,6 +491,13 @@ class VpnController(private val context: Context, private val store: Store) {
                     book.recordSuccess(route, good, now())
                     store.saveRouteBook(networkKey, book)
                     onConnected(route, verified = true, degraded = !good)
+                    return true
+                }
+            }
+            masqueDegraded?.let { route ->
+                val account = store.masqueAccount ?: return@let
+                if ((masqueUp && runningMasque == route) || tryMasque(account, route, settings, split) == Outcome.OK) {
+                    onConnectedMasque(account, route, degraded = !routeIsGood())
                     return true
                 }
             }
@@ -358,21 +517,27 @@ class VpnController(private val context: Context, private val store: Store) {
             val steps = if (mtuRetriesLeft > 0) (listOf(candidate.mtu) + WarpConfig.MTU_STEPS).distinct() else listOf(candidate.mtu)
             for ((index, mtu) in steps.withIndex()) {
                 val note = if (index > 0) " · MTU $mtu" else ""
-                _status.value = VpnStatus.Working("در حال اتصال: ${candidate.endpoint} · ${candidate.params.obfuscation.title}$note")
+                _status.value = VpnStatus.Working(text(R.string.st_connecting_route, candidate.endpoint, text(candidate.params.obfuscation.titleRes)) + note)
                 val route = candidate.withMtu(mtu)
                 val outcome = tryConfig(render(candidate, mtu), verify = true)
                 onTunnel = route
+                val label = "route ${candidate.endpoint} ${candidate.params.obfuscation} mtu=$mtu"
                 when (outcome) {
                     // A smaller MTU cannot help a handshake that never happened.
-                    Outcome.NO_HANDSHAKE -> return failedRoute(candidate)
+                    Outcome.NO_HANDSHAKE -> {
+                        Log.i(TAG, "$label: no handshake ($lastStages)")
+                        return failedRoute(candidate)
+                    }
                     Outcome.HANDSHAKE_ONLY -> {
+                        Log.i(TAG, "$label: handshake but no traffic ($lastStages)")
                         sawHandshake = true
                         if (handshakeOnly == null) handshakeOnly = route
                     }
                     Outcome.OK -> {
                         sawHandshake = true
+                        val checkStarted = now()
                         val good = routeIsGood()
-                        Log.i(TAG, "route ${candidate.endpoint} ${candidate.params.obfuscation} mtu=$mtu: exit=${_exit.value?.colo} good=$good")
+                        Log.i(TAG, "$label: exit=${_exit.value?.colo} good=$good ($lastStages, check ${now() - checkStarted} ms)")
                         book.recordSuccess(route, good, now())
                         store.saveRouteBook(networkKey, book)
                         if (good) {
@@ -407,11 +572,11 @@ class VpnController(private val context: Context, private val store: Store) {
         val now = System.currentTimeMillis()
         if (now - store.lastRegisterAt < REREGISTER_EVERY_MS) return false
         store.lastRegisterAt = now
-        _status.value = VpnStatus.Working("در حال به‌روزرسانی ثبت‌نام WARP…")
+        _status.value = VpnStatus.Working(text(R.string.st_reregistering))
         return runCatching { api.register() }
             .onSuccess {
                 Log.i(TAG, "registered a new WARP account")
-                store.account = it
+                adoptAccount(it)
                 forgetServer()
             }
             .isSuccess
@@ -433,7 +598,7 @@ class VpnController(private val context: Context, private val store: Store) {
         }
         val delayS = retryDelayS
         retryDelayS = (retryDelayS * 2).coerceAtMost(MAX_RETRY_S)
-        _status.value = VpnStatus.Failed("$message تلاش مجدد پس از ${formatSeconds(delayS)}.")
+        _status.value = VpnStatus.Failed(text(R.string.err_retry_in, message, formatSeconds(delayS)))
         retryJob?.cancel()
         retryJob = scope.launch {
             delay(delayS * 1000L)
@@ -451,9 +616,10 @@ class VpnController(private val context: Context, private val store: Store) {
         }
         lastAutoSearchAt = now
         val failed = current
-        Log.i(TAG, "failover: $reason (was ${failed?.endpoint} ${failed?.params?.obfuscation})")
-        _status.value = VpnStatus.Working("ارتباط قطع شد ($reason)، در حال جست‌وجوی سرور دیگر…")
-        connectJob = scope.launch { connectInternal(failed) }
+        val failedMasque = currentMasque
+        Log.i(TAG, "failover: $reason (was ${failedMasque?.let { "MASQUE $it" } ?: "${failed?.endpoint} ${failed?.params?.obfuscation}"})")
+        _status.value = VpnStatus.Working(text(R.string.st_connection_lost, reason))
+        connectJob = scope.launch { connectInternal(failed, failedMasque = failedMasque) }
     }
 
     private fun tooHot(): Boolean {
@@ -467,7 +633,7 @@ class VpnController(private val context: Context, private val store: Store) {
      * no disguise until the next rekey; a fresh handshake starts with the mask, and the routes
      * tried first are those that worked on this network before.
      */
-    private fun onNetworkChanged(label: String) {
+    private fun onNetworkChanged(kind: NetworkKind) {
         stallDetector.reset()
         networkCheckJob?.cancel()
         networkCheckJob = scope.launch {
@@ -476,7 +642,7 @@ class VpnController(private val context: Context, private val store: Store) {
             when (_status.value) {
                 is VpnStatus.Connected, is VpnStatus.Working -> {
                     val previous = connectJob
-                    _status.value = VpnStatus.Working("شبکه تغییر کرد ($label)، در حال اتصال…")
+                    _status.value = VpnStatus.Working(text(R.string.st_network_changed, networkName(kind)))
                     connectJob = scope.launch {
                         previous?.cancelAndJoin()
                         connectInternal()
@@ -493,13 +659,13 @@ class VpnController(private val context: Context, private val store: Store) {
     }
 
     private suspend fun connectCustom(text: String, split: SplitRule) {
-        _status.value = VpnStatus.Working("در حال اتصال با کانفیگ سفارشی…")
+        _status.value = VpnStatus.Working(text(R.string.st_connecting_custom))
         if (tryConfig(WarpConfig.applySplit(text, split), verify = false) == Outcome.OK) {
-            _status.value = VpnStatus.Connected(WarpConfig.endpointOf(text) ?: "کانفیگ سفارشی", null, null, System.currentTimeMillis(), false)
+            _status.value = VpnStatus.Connected(WarpConfig.endpointOf(text) ?: text(R.string.custom_endpoint), null, null, System.currentTimeMillis(), false)
             startMonitor(checkQuality = false)
         } else {
             bringDown(keepService = store.wantConnected)
-            failAndRetry("سرور کانفیگ واردشده به handshake پاسخ نداد.")
+            failAndRetry(text(R.string.err_custom_no_handshake))
         }
     }
 
@@ -514,8 +680,13 @@ class VpnController(private val context: Context, private val store: Store) {
 
     private enum class Outcome { OK, HANDSHAKE_ONLY, NO_HANDSHAKE }
 
+    /** How long each stage of the last [tryConfig] took, for the log: slow connections need a reason. */
+    private var lastStages = ""
+
     private suspend fun tryConfig(text: String, verify: Boolean): Outcome {
         val config = Config.parse(BufferedReader(StringReader(text)))
+        stopMasque()
+        val started = System.currentTimeMillis()
         // Rapid swaps can hit "Cannot set address" while Android still tears down the old interface.
         for (attempt in 1..ESTABLISH_TRIES) {
             try {
@@ -532,9 +703,92 @@ class VpnController(private val context: Context, private val store: Store) {
                 delay(ESTABLISH_RETRY_MS)
             }
         }
-        if (!waitForHandshake()) return Outcome.NO_HANDSHAKE
+        val up = System.currentTimeMillis()
+        val handshake = waitForHandshake()
+        val shaken = System.currentTimeMillis()
+        lastStages = "up ${up - started} ms, handshake " + if (handshake) "${shaken - up} ms" else "none in ${shaken - up} ms"
+        if (!handshake) return Outcome.NO_HANDSHAKE
         if (!verify) return Outcome.OK
-        return if (trafficGoesThroughWarp()) Outcome.OK else Outcome.HANDSHAKE_ONLY
+        val flows = trafficGoesThroughWarp()
+        lastStages += ", trace ${System.currentTimeMillis() - shaken} ms"
+        return if (flows) Outcome.OK else Outcome.HANDSHAKE_ONLY
+    }
+
+    /**
+     * Hands the VPN interface to the MASQUE core and waits until it reaches Cloudflare. The core's
+     * sockets leave through the physical network (see [MasqueTunnel]), so probes keep working.
+     */
+    private suspend fun tryMasque(
+        account: MasqueAccount,
+        route: MasqueRoute,
+        settings: Settings,
+        split: SplitRule,
+        endpoint: String? = null,
+    ): Outcome {
+        val config = Config.parse(
+            BufferedReader(StringReader(WarpConfig.renderInterface(account.addressV4, account.addressV6, settings.dns.servers, split, MASQUE_MTU))),
+        )
+        stopMasque()
+        val started = System.currentTimeMillis()
+        for (attempt in 1..ESTABLISH_TRIES) {
+            try {
+                val tun = synchronized(backendLock) {
+                    backend.establishForeignTunnel(tunnel, config).also {
+                        tunnelUp = true
+                        masqueUp = true
+                    }
+                }
+                runningMasque = route
+                val sni = settings.quicSni.ifBlank { QuicMask.randomSni() }
+                if (endpoint != null) masque.start(tun, account, route, sni, MASQUE_MTU, endpoint) else masque.start(tun, account, route, sni, MASQUE_MTU)
+                break
+            } catch (e: BackendException) {
+                throw e
+            } catch (e: Exception) {
+                stopMasque()
+                if (attempt == ESTABLISH_TRIES) throw e
+                Log.w(TAG, "MASQUE start failed (${e.message}), retrying")
+                delay(ESTABLISH_RETRY_MS)
+            }
+        }
+        val up = System.currentTimeMillis()
+        val connected = masque.awaitConnected(MASQUE_CONNECT_TIMEOUT_MS)
+        val joined = System.currentTimeMillis()
+        lastStages = "up ${up - started} ms, connect " +
+            if (connected) "${joined - up} ms" else "none in ${joined - up} ms (${masque.lastError ?: "no answer"})"
+        if (!connected) return Outcome.NO_HANDSHAKE
+        val flows = trafficGoesThroughWarp()
+        lastStages += ", trace ${System.currentTimeMillis() - joined} ms"
+        return if (flows) Outcome.OK else Outcome.HANDSHAKE_ONLY
+    }
+
+    private fun stopMasque() {
+        if (!masqueUp) return
+        masque.stop()
+        synchronized(backendLock) {
+            backend.releaseForeignTunnel()
+            tunnelUp = false
+        }
+        masqueUp = false
+        runningMasque = null
+        currentMasque = null
+    }
+
+    /** Registers the MASQUE device once; a failure waits a few hours, as the API is likely blocked. */
+    private fun ensureMasqueAccount(): MasqueAccount? {
+        store.masqueAccount?.let { return it }
+        val now = System.currentTimeMillis()
+        if (now - store.masqueRegisterTriedAt < MASQUE_REGISTER_EVERY_MS) return null
+        store.masqueRegisterTriedAt = now
+        _status.value = VpnStatus.Working(text(R.string.st_registering_masque))
+        return runCatching { api.registerMasque() }
+            .onSuccess { account ->
+                Log.i(TAG, "registered a MASQUE device")
+                store.masqueAccount = account
+                bindWarpPlus { api.applyLicense(account, it) }
+            }
+            .onFailure { Log.w(TAG, "MASQUE registration failed: ${it.message}") }
+            .getOrNull()
     }
 
     private suspend fun waitForHandshake(): Boolean {
@@ -676,7 +930,7 @@ class VpnController(private val context: Context, private val store: Store) {
             ).map { "$it${(1..10).random()}:$port" } + "[2606:4700:d0::a29f:c001]:$port"
             val dc = TelegramProbe.dcs[1]
             for (endpoint in endpoints) {
-                _status.value = VpnStatus.Working("اندازه‌گیری خروجی: $endpoint")
+                _status.value = VpnStatus.Working(text(R.string.st_survey, endpoint))
                 val text = WarpConfig.render(account, endpoint, params, settings.dns.servers, split)
                 val outcome = runCatching { tryConfig(text, verify = false) }.getOrNull()
                 val exit = if (outcome == Outcome.OK) currentExit() else null
@@ -692,9 +946,20 @@ class VpnController(private val context: Context, private val store: Store) {
         }
     }
 
+    private fun onConnectedMasque(account: MasqueAccount, route: MasqueRoute, degraded: Boolean) {
+        current = null
+        currentMasque = route
+        retryDelayS = FIRST_RETRY_S
+        _status.value = VpnStatus.Connected(
+            "${account.endpointV4}:443", null, null, System.currentTimeMillis(), verified = true, degraded = degraded, masque = route,
+        )
+        startMonitor(checkQuality = !degraded)
+    }
+
     private fun onConnected(candidate: Candidate, verified: Boolean, degraded: Boolean) {
         store.lastGood = candidate
         current = candidate
+        currentMasque = null
         retryDelayS = FIRST_RETRY_S
         _status.value = VpnStatus.Connected(
             candidate.endpoint, candidate.params.obfuscation, candidate.rttMs, System.currentTimeMillis(), verified, degraded,
@@ -716,13 +981,14 @@ class VpnController(private val context: Context, private val store: Store) {
             var rxAtLastCheck = 0L
             while (isActive) {
                 delay(1000)
-                val stats = synchronized(backendLock) { runCatching { backend.getStatistics(tunnel) }.getOrNull() } ?: continue
-                _traffic.value = Traffic(stats.totalRx(), stats.totalTx())
+                val traffic = readTraffic() ?: continue
+                _traffic.value = traffic
                 if (++tick % MONITOR_EVERY_S != 0) continue
 
                 val now = System.currentTimeMillis()
-                val handshake = synchronized(backendLock) { runCatching { backend.getLastHandshake(tunnel) }.getOrDefault(0L) }
-                val suspicion = stallDetector.update(now, stats.totalRx(), stats.totalTx(), handshake.coerceAtLeast(0))
+                // MASQUE has no WireGuard handshakes to age; its stalls show up in the counters.
+                val handshake = if (masqueUp) 0L else synchronized(backendLock) { runCatching { backend.getLastHandshake(tunnel) }.getOrDefault(0L) }
+                val suspicion = stallDetector.update(now, traffic.rx, traffic.tx, handshake.coerceAtLeast(0))
                 if (suspicion != null && now >= quietUntil) {
                     // Counters only raise a suspicion; a real request through the tunnel decides.
                     Log.i(TAG, "session suspicious: $suspicion")
@@ -730,7 +996,7 @@ class VpnController(private val context: Context, private val store: Store) {
                         stallDetector.reset()
                         quietUntil = System.currentTimeMillis() + MONITOR_GRACE_MS
                     } else {
-                        failover(suspicion)
+                        failover(describe(suspicion))
                         quietUntil = System.currentTimeMillis() + MONITOR_GRACE_MS
                     }
                     continue
@@ -738,15 +1004,23 @@ class VpnController(private val context: Context, private val store: Store) {
 
                 if (checkQuality && now >= nextQualityCheckAt) {
                     nextQualityCheckAt = now + QUALITY_CHECK_EVERY_MS
-                    val flowing = stats.totalRx() - rxAtLastCheck >= QUALITY_CHECK_MIN_RX
-                    rxAtLastCheck = stats.totalRx()
+                    val flowing = traffic.rx - rxAtLastCheck >= QUALITY_CHECK_MIN_RX
+                    rxAtLastCheck = traffic.rx
                     if (flowing && !(trafficGoesThroughWarp() && routeIsGood())) {
-                        failover("مسیر بدتر شد")
+                        failover(text(R.string.reason_route_worse))
                     }
                 }
             }
         }
     }
+
+    private fun readTraffic(): Traffic? =
+        if (masqueUp) {
+            Traffic(masque.rx, masque.tx)
+        } else {
+            synchronized(backendLock) { runCatching { backend.getStatistics(tunnel) }.getOrNull() }
+                ?.let { Traffic(it.totalRx(), it.totalTx()) }
+        }
 
     /**
      * Closes the tunnel. With [keepService] the VpnService stays alive for an automatic retry;
@@ -756,7 +1030,9 @@ class VpnController(private val context: Context, private val store: Store) {
         monitorJob?.cancel()
         current = null
         _exit.value = null
-        val wasUp = synchronized(backendLock) {
+        val masqueWasUp = masqueUp
+        stopMasque()
+        val awgWasUp = synchronized(backendLock) {
             val up = tunnelUp
             runCatching {
                 if (keepService) {
@@ -771,7 +1047,7 @@ class VpnController(private val context: Context, private val store: Store) {
             up
         }
         // Give a stopped VpnService time to be destroyed before anything brings it up again.
-        if (wasUp && !keepService) delay(SERVICE_SETTLE_MS)
+        if ((awgWasUp || masqueWasUp) && !keepService) delay(SERVICE_SETTLE_MS)
         _traffic.value = Traffic()
     }
 
@@ -786,15 +1062,32 @@ class VpnController(private val context: Context, private val store: Store) {
             (settings.manualEndpoint == null || endpoint == settings.manualEndpoint)
 
     private fun describe(e: BackendException): String = when (e.reason) {
-        BackendException.Reason.VPN_NOT_AUTHORIZED -> "مجوز VPN داده نشده است. دوباره روی «اتصال» بزنید و اتصال را مجاز کنید."
-        BackendException.Reason.UNABLE_TO_START_VPN -> "سیستم سرویس VPN را راه‌اندازی نکرد. دوباره تلاش کنید."
-        BackendException.Reason.TUN_CREATION_ERROR -> "ساخت رابط VPN ناموفق بود. شاید VPN دیگری یا «VPN همیشه روشن» برنامه‌ی دیگری فعال است."
-        BackendException.Reason.DNS_RESOLUTION_FAILURE -> "پیدا کردن آدرس سرور ناموفق بود: ${e.format.firstOrNull() ?: ""}."
-        BackendException.Reason.GO_ACTIVATION_ERROR_CODE -> "تونل راه‌اندازی نشد (کد ${e.format.firstOrNull() ?: "?"})."
-        else -> "خطای VPN: ${e.reason}"
+        BackendException.Reason.VPN_NOT_AUTHORIZED -> text(R.string.err_vpn_not_authorized)
+        BackendException.Reason.UNABLE_TO_START_VPN -> text(R.string.err_vpn_service)
+        BackendException.Reason.TUN_CREATION_ERROR -> text(R.string.err_tun)
+        BackendException.Reason.DNS_RESOLUTION_FAILURE -> text(R.string.err_dns_resolution, e.format.firstOrNull()?.toString().orEmpty())
+        BackendException.Reason.GO_ACTIVATION_ERROR_CODE -> text(R.string.err_tunnel_start, e.format.firstOrNull()?.toString() ?: "?")
+        else -> text(R.string.err_vpn_generic, e.reason.toString())
     }
 
-    private fun formatSeconds(seconds: Int) = if (seconds < 60) "$seconds ثانیه" else "${seconds / 60} دقیقه"
+    private fun describe(suspicion: StallDetector.Suspicion): String = when (suspicion) {
+        is StallDetector.Suspicion.StaleHandshake -> text(R.string.reason_stale_handshake, suspicion.ageSec)
+        StallDetector.Suspicion.NoReplies -> text(R.string.reason_no_replies)
+    }
+
+    private fun networkName(kind: NetworkKind): String = when (kind) {
+        NetworkKind.WIFI -> text(R.string.net_wifi)
+        NetworkKind.ETHERNET -> text(R.string.net_ethernet)
+        NetworkKind.CELLULAR -> text(R.string.net_cellular)
+        NetworkKind.OTHER -> text(R.string.net_other)
+        NetworkKind.NONE -> text(R.string.net_none)
+    }
+
+    /** Status texts follow the app's language. */
+    private fun text(@StringRes id: Int, vararg args: Any): String = context.getString(id, *args)
+
+    private fun formatSeconds(seconds: Int) =
+        if (seconds < 60) text(R.string.duration_seconds, seconds) else text(R.string.duration_minutes, seconds / 60)
 
     private companion object {
         const val TAG = "Dostup/Vpn"
@@ -804,6 +1097,11 @@ class VpnController(private val context: Context, private val store: Store) {
         /** How many candidates may spend time on MTU fallback before we move on. */
         const val MTU_RETRY_CANDIDATES = 2
         const val HANDSHAKE_TIMEOUT_MS = 6_000L
+        /** MASQUE's own packets carry the tunnel, and WARP clients use 1280 over it. */
+        const val MASQUE_MTU = 1280
+        /** QUIC and TLS on a slow mobile link, plus the core's own retry. */
+        const val MASQUE_CONNECT_TIMEOUT_MS = 8_000L
+        const val MASQUE_REGISTER_EVERY_MS = 6 * 3_600_000L
         const val TRACE_TIMEOUT_S = 8L
         const val TRACE_TRIES = 2
         const val TRACE_RETRY_MS = 1_000L

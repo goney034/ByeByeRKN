@@ -9,3 +9,6 @@ gradlew text eol=lf
 *.webp binary
 *.png binary
 *.jks binary
+# Signed: the bytes must stay exactly as signed.
+catalog/warp.json -text
+catalog/warp.json.sig -text

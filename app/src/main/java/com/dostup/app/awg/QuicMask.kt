@@ -1,5 +1,6 @@
 package com.dostup.app.awg
 
+import com.dostup.app.probe.EndpointCatalog
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.security.SecureRandom
@@ -19,10 +20,8 @@ object QuicMask {
     private const val PN_LENGTH = 4
     private const val TAG_LENGTH = 16
 
-    val defaultSni = listOf(
-        "yandex.ru", "ya.ru", "vk.com", "ozon.ru", "mail.ru", "rutube.ru",
-        "wildberries.ru", "avito.ru", "gosuslugi.ru", "dzen.ru",
-    )
+    /** Popular sites to show, from the endpoint catalog so the list can be updated. */
+    val defaultSni: List<String> get() = EndpointCatalog.current.quicSni
 
     private val random = SecureRandom()
 

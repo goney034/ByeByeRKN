@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Navigation -->
+    <string name="nav_home">خانه</string>
+    <string name="nav_apps">برنامه‌ها</string>
+    <string name="nav_settings">تنظیمات</string>
+    <string name="toast_vpn_permission_needed">بدون مجوز VPN امکان اتصال وجود ندارد</string>
+
+    <!-- Home -->
+    <string name="action_connect">اتصال</string>
+    <string name="action_disconnect">قطع اتصال</string>
+    <string name="status_connecting">در حال اتصال…</string>
+    <string name="status_idle_hint">سرور و پنهان‌سازی خودکار انتخاب می‌شوند</string>
+    <string name="status_connected">متصل · %1$s</string>
+    <string name="status_connected_unverified">متصل، بدون بررسی ترافیک · %1$s</string>
+    <string name="status_degraded">مسیر بهتری پیدا نشد؛ ممکن است تلگرام کار نکند</string>
+    <string name="split_tunnel">تونل تفکیکی</string>
+    <string name="split_chip_off">تونل تفکیکی خاموش است</string>
+    <plurals name="split_chip_direct">
+        <item quantity="one">مستقیم: %d برنامه</item>
+        <item quantity="other">مستقیم: %d برنامه</item>
+    </plurals>
+    <plurals name="split_chip_only">
+        <item quantity="one">فقط %d برنامه از طریق VPN</item>
+        <item quantity="other">فقط %d برنامه از طریق VPN</item>
+    </plurals>
+    <string name="update_available">نسخه‌ی %1$s در دسترس است</string>
+    <string name="server_custom">کانفیگ شخصی</string>
+    <string name="server_auto">سرور خودکار انتخاب می‌شود</string>
+    <string name="stat_ping">پینگ</string>
+    <string name="stat_received">دریافت‌شده</string>
+    <string name="stat_sent">ارسال‌شده</string>
+    <string name="unit_ms">%1$d میلی‌ثانیه</string>
+    <string name="size_bytes">%1$d بایت</string>
+    <string name="size_kb">%1$.1f کیلوبایت</string>
+    <string name="size_mb">%1$.1f مگابایت</string>
+    <string name="size_gb">%1$.2f گیگابایت</string>
+
+    <!-- Apps -->
+    <string name="tab_all">همه</string>
+    <string name="tab_except">به‌جز</string>
+    <string name="tab_only">فقط</string>
+    <string name="split_all_hint">تمام ترافیک گوشی از طریق VPN عبور می‌کند.</string>
+    <string name="split_exclude_hint">برنامه‌های علامت‌خورده مستقیم کار می‌کنند و بقیه از طریق VPN. برای برنامه‌های بانکی و خدمات دولتی مناسب است.</string>
+    <string name="split_include_hint">فقط برنامه‌های علامت‌خورده از طریق VPN می‌روند و بقیه مستقیم.</string>
+    <string name="apply_now">اعمال همین حالا</string>
+    <string name="apply_now_summary">اتصال دوباره‌ی VPN با تنظیمات جدید</string>
+    <string name="quick_pick">انتخاب سریع</string>
+    <string name="add_russian_services">افزودن سرویس‌های روسی</string>
+    <string name="add_russian_services_summary">بانک‌ها، Gosuslugi، بازارچه‌های اینترنتی، Yandex، VK</string>
+    <string name="add_blocked">افزودن برنامه‌های مسدودشده</string>
+    <string name="clear_all">برداشتن همه‌ی علامت‌ها</string>
+    <string name="apps_count">برنامه‌ها · %1$d از %2$d علامت‌خورده</string>
+    <string name="search_apps">جست‌وجوی برنامه</string>
+
+    <!-- Settings -->
+    <string name="toast_config_failed">دریافت کانفیگ ناموفق بود: %1$s</string>
+    <string name="custom_in_use">کانفیگ شخصی در حال استفاده است</string>
+    <string name="custom_in_use_summary">WARP، پنهان‌سازی و انتخاب سرور غیرفعال هستند</string>
+    <string name="back_to_warp">بازگشت به WARP</string>
+    <string name="section_shade">پرده‌ی اعلان‌ها</string>
+    <string name="tile_title">کاشی «ByeByeRKN»</string>
+    <string name="tile_added">به پرده‌ی اعلان اضافه شد</string>
+    <string name="tile_add">افزودن به تنظیمات سریع</string>
+    <string name="toast_tile_added">کاشی در پرده‌ی اعلان قرار گرفت</string>
+    <string name="toast_tile_manual">پرده‌ی اعلان را باز کنید، روی مداد بزنید و کاشی «ByeByeRKN» را به پنل بکشید</string>
+    <string name="section_config">کانفیگ AmneziaWG</string>
+    <string name="share_config">اشتراک‌گذاری کانفیگ</string>
+    <string name="share_config_summary">فایل byebyerkn.conf</string>
+    <string name="copy_config">کپی کانفیگ</string>
+    <string name="toast_config_copied">کانفیگ کپی شد</string>
+    <string name="import_config">وارد کردن از کلیپ‌بورد</string>
+    <string name="import_config_summary">سرور شخصی به‌جای WARP</string>
+    <string name="toast_config_imported">کانفیگ وارد شد</string>
+    <string name="err_clipboard_empty">متنی در کلیپ‌بورد نیست</string>
+    <string name="err_not_a_config">این شبیه کانفیگ WireGuard/AmneziaWG نیست: %1$s</string>
+    <string name="section_advanced">پیشرفته</string>
+    <string name="advanced_show">نمایش تنظیمات دستی</string>
+    <string name="advanced_hide">پنهان کردن تنظیمات دستی</string>
+    <string name="advanced_summary">معمولاً لازم نیست: برنامه همه‌چیز را خودکار انتخاب می‌کند</string>
+    <string name="section_connection">اتصال</string>
+    <string name="disguise">پنهان‌سازی</string>
+    <string name="disguise_auto_summary">متناسب با شبکه‌ی شما انتخاب می‌شود</string>
+    <string name="auto">خودکار</string>
+    <string name="manual">دستی</string>
+    <string name="server">سرور</string>
+    <string name="server_manual_summary">آدرس WARP شخصی</string>
+    <string name="server_auto_summary">خودکار انتخاب می‌شود</string>
+    <string name="address_port">آدرس:پورت</string>
+    <string name="quic_site">سایت برای پنهان‌سازی QUIC</string>
+    <string name="quic_site_random">یک سایت محبوب تصادفی</string>
+    <string name="quic_site_hint">بسته‌ی اول شبیه یک درخواست HTTP/3 به این سایت خواهد بود. اگر خالی بماند، یکی از %1$s و سایت‌های دیگر به‌صورت تصادفی انتخاب می‌شود.</string>
+    <string name="repick_server">انتخاب دوباره‌ی سرور</string>
+    <string name="repick_server_summary">در اتصال بعدی</string>
+    <string name="toast_repick_server">سرور در اتصال بعدی دوباره انتخاب می‌شود</string>
+    <string name="section_account">حساب WARP</string>
+    <string name="reregister">ثبت‌نام دوباره</string>
+    <string name="reregister_summary">کلید و آدرس WARP جدید</string>
+    <string name="reregister_summary_none">ثبت‌نام در اولین اتصال انجام می‌شود</string>
+    <string name="reregister_dialog_title">ثبت‌نام جدید</string>
+    <string name="reregister_dialog_text">کلید و آدرس WARP جدیدی ساخته می‌شود. کانفیگ‌هایی که قبلاً صادر کرده‌اید تا زمانی که Cloudflare آن‌ها را غیرفعال نکند کار می‌کنند.</string>
+    <string name="reregister_confirm">بازنشانی</string>
+    <string name="toast_reregister">ثبت‌نام جدید در اتصال بعدی انجام می‌شود</string>
+    <string name="section_about">درباره‌ی برنامه</string>
+    <string name="language">زبان</string>
+    <string name="licenses">مجوزها</string>
+    <string name="licenses_summary">amneziawg-android، amneziawg-go و usque (Apache-2.0 / MIT)، بر پایه‌ی WireGuard®. ارتباطی با Cloudflare ندارد؛ WARP سرویس Cloudflare, Inc. است.</string>
+    <string name="save">ذخیره</string>
+    <string name="cancel">انصراف</string>
+    <string name="dns_adguard">AdGuard (بدون تبلیغ)</string>
+
+    <!-- Disguises -->
+    <string name="obf_light">سبک</string>
+    <string name="obf_light_summary">چند بسته‌ی زائد پیش از handshake</string>
+    <string name="obf_quic_summary">بسته‌ی اول HTTP/3 به یک وب‌سایت معمولی است</string>
+    <string name="obf_stun_summary">بسته‌ی اول شبیه تماس تصویری WebRTC است</string>
+    <string name="obf_dns_summary">بسته‌ی اول یک درخواست DNS است</string>
+    <string name="obf_sip_summary">بسته‌ی اول شبیه تلفن اینترنتی (IP) است</string>
+    <string name="obf_heavy">تقویت‌شده</string>
+    <string name="obf_heavy_summary">تعداد زیادی بسته‌ی زائد، برای شبکه‌های سخت‌گیر</string>
+    <string name="obf_none">بدون پنهان‌سازی</string>
+    <string name="obf_none_summary">WireGuard معمولی</string>
+
+    <!-- Connection progress and errors -->
+    <string name="st_registering">ثبت‌نام در WARP…</string>
+    <string name="st_registering_retry">ثبت‌نام در WARP: در حال امتحان مسیر جایگزین…</string>
+    <string name="st_reregistering">در حال به‌روزرسانی ثبت‌نام WARP…</string>
+    <string name="st_registering_masque">ثبت‌نام برای MASQUE…</string>
+    <string name="st_checking_known">در حال بررسی مسیرهای شناخته‌شده…</string>
+    <string name="st_scanning">جست‌وجوی سرور (%1$s): %2$d از %3$d، پاسخ‌دهنده: %4$d</string>
+    <string name="st_connecting_route">در حال اتصال: %1$s · %2$s</string>
+    <string name="st_connecting_masque">در حال اتصال از طریق MASQUE (%1$s)…</string>
+    <string name="st_connecting_custom">در حال اتصال با کانفیگ شخصی…</string>
+    <string name="st_connection_lost">ارتباط قطع شد (%1$s)، در حال جست‌وجوی سرور دیگر…</string>
+    <string name="st_network_changed">شبکه تغییر کرد (%1$s)، در حال اتصال…</string>
+    <string name="st_survey">اندازه‌گیری خروجی: %1$s</string>
+    <string name="custom_endpoint">کانفیگ شخصی</string>
+    <string name="err_whitelist">به نظر می‌رسد اپراتور فهرست سفید فعال کرده است: فقط سایت‌های مجاز باز می‌شوند و VPN از این مسیر کار نمی‌کند.</string>
+    <string name="err_no_server">هیچ سروری پاسخ نداد.</string>
+    <string name="err_register">ثبت‌نام در WARP ناموفق بود: %1$s. اگر API کلودفلر در شبکه‌ی شما در دسترس نیست، در تنظیمات یک کانفیگ آماده وارد کنید.</string>
+    <string name="err_background">اندروید اجازه نداد VPN در پس‌زمینه روشن شود. روی «اتصال» بزنید.</string>
+    <string name="err_custom_no_handshake">سرور کانفیگ واردشده به handshake پاسخ نداد.</string>
+    <string name="err_retry_in">%1$s تلاش مجدد پس از %2$s.</string>
+    <string name="err_vpn_not_authorized">مجوز VPN داده نشده است. دوباره روی «اتصال» بزنید و اتصال را مجاز کنید.</string>
+    <string name="err_vpn_service">سیستم سرویس VPN را راه‌اندازی نکرد. دوباره تلاش کنید.</string>
+    <string name="err_tun">ساخت رابط VPN ناموفق بود. شاید VPN دیگری یا «VPN همیشه روشن» برنامه‌ی دیگری فعال است.</string>
+    <string name="err_dns_resolution">پیدا کردن آدرس سرور %1$s ناموفق بود.</string>
+    <string name="err_tunnel_start">تونل راه‌اندازی نشد (کد %1$s).</string>
+    <string name="err_vpn_generic">خطای VPN: %1$s</string>
+    <string name="reason_failover_test">بررسی تعویض مسیر</string>
+    <string name="reason_route_worse">مسیر بدتر شد</string>
+    <string name="reason_stale_handshake">handshake به‌روز نشده است: %1$d ثانیه</string>
+    <string name="reason_no_replies">داده ارسال می‌شود اما پاسخی نمی‌آید</string>
+    <string name="duration_seconds">%1$d ثانیه</string>
+    <string name="duration_minutes">%1$d دقیقه</string>
+
+    <!-- Networks -->
+    <string name="net_cellular">شبکه‌ی موبایل</string>
+    <string name="net_other">شبکه‌ی دیگر</string>
+    <string name="net_none">بدون شبکه</string>
+
+    <!-- Notification and tile -->
+    <string name="notification_channel_description">نشان می‌دهد که VPN فعال است</string>
+    <string name="notification_connected">متصل</string>
+    <string name="notification_retrying">ارتباط برقرار نیست، دوباره تلاش می‌کنم…</string>
+    <string name="tile_error">خطا</string>
+    <string name="tile_disconnected">قطع شده</string>
+
+    <!-- Background work -->
+    <string name="section_background">کار در پس‌زمینه</string>
+    <string name="battery_unrestricted">بدون محدودیت باتری</string>
+    <string name="battery_unrestricted_on">مجاز است: اندروید برای صرفه‌جویی در باتری VPN را متوقف نمی‌کند</string>
+    <string name="battery_unrestricted_off">اندروید ممکن است برای صرفه‌جویی در باتری VPN را متوقف کند. برای مجاز کردن بزنید</string>
+    <string name="autostart">اجرای خودکار</string>
+    <string name="autostart_summary">آن را برای ByeByeRKN روشن کنید، وگرنه سیستم گوشی VPN را متوقف می‌کند</string>
+    <string name="maker_battery">صرفه‌جویی باتری برای برنامه</string>
+    <string name="maker_battery_summary">گزینه‌ی «بدون محدودیت» را انتخاب کنید</string>
+    <string name="background_chip">اجازه‌ی کار در پس‌زمینه</string>
+
+    <!-- WARP+ -->
+    <string name="warp_plus_key">کلید WARP+</string>
+    <string name="warp_plus_none">تنظیم نشده: WARP رایگان معمولی</string>
+    <string name="warp_plus_dialog_text">این کلید مسیرهای سریع‌تر WARP+ را فعال می‌کند و به دستگاه‌های برنامه گره می‌خورد. بدون کلید، همه‌چیز روی WARP رایگان همان‌طور کار می‌کند. برای فراموش کردن کلید، کادر را خالی بگذارید.</string>
+    <string name="warp_plus_checking">در حال بررسی کلید…</string>
+    <string name="warp_plus_on">WARP+ روشن است</string>
+    <string name="warp_plus_accepted">کلید پذیرفته شد، اما Cloudflare برای این حساب WARP+ را فعال نکرد</string>
+    <string name="warp_plus_failed">کلید کار نکرد: %1$s</string>
+    <string name="warp_plus_bad_format">یک کلید به این شکل است: xxxxxxxx-xxxxxxxx-xxxxxxxx</string>
+    <string name="warp_plus_invalid">Cloudflare کلید را نپذیرفت: معتبر نیست</string>
+    <string name="warp_plus_unreachable">اتصال به Cloudflare برقرار نشد. بعداً یا با VPN روشن دوباره تلاش کنید</string>
+    <string name="warp_plus_forgotten">کلید فراموش شد. برای بازگشت به WARP رایگان، دوباره ثبت‌نام کنید</string>
+
+    <!-- Sharing -->
+    <string name="section_share">اشتراک‌گذاری VPN</string>
+    <string name="share_vpn">اشتراک‌گذاری VPN</string>
+    <string name="share_vpn_summary">لپ‌تاپ یا تلویزیونی که به هات‌اسپات گوشی وصل است از طریق VPN می‌رود. تا وقتی VPN متصل است کار می‌کند</string>
+    <string name="share_address">آدرس پروکسی</string>
+    <string name="share_no_hotspot">هات‌اسپات، تدرینگ USB یا بلوتوث گوشی را روشن کنید</string>
+    <string name="share_protocols">HTTP و SOCKS5، بدون رمز عبور</string>
+    <string name="share_how">نحوه‌ی اتصال</string>
+    <string name="share_how_summary">کامپیوتر: این آدرس و پورت را در تنظیمات شبکه به‌عنوان پروکسی HTTP وارد کنید. تلویزیون: تنظیمات همین شبکه‌ی Wi-Fi ← Proxy ← Manual. فقط TCP از پروکسی عبور می‌کند: بازی‌ها و تماس‌ها از VPN رد نمی‌شوند.</string>
+</resources>
