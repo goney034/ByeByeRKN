@@ -1,8 +1,10 @@
 package com.dostup.app.ui
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -39,6 +41,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dostup.app.AppLocale
 import com.dostup.app.BuildConfig
 import com.dostup.app.R
 import com.dostup.app.awg.Obfuscation
@@ -374,16 +377,20 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                         summary = "AmneziaWG ${vpn.awgVersion}",
                         insideMargin = RowMargin,
                     )
-                    // Android 13+ keeps a language per app; older versions follow the system language.
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        RowDivider()
-                        SuperArrow(
-                            title = stringResource(R.string.language),
-                            summary = currentLanguageName(),
-                            insideMargin = RowMargin,
-                            onClick = { openLanguageSettings(context) },
-                        )
-                    }
+                    // Fork: the language is chosen here, on every Android version, and not in the phone's settings.
+                    RowDivider()
+                    val language = AppLocale.get(context)
+                    SuperDropdown(
+                        title = stringResource(R.string.language),
+                        summary = AppLocale.nameOf(language),
+                        items = AppLocale.languages.map { it.second },
+                        selectedIndex = AppLocale.languages.indexOfFirst { it.first == language },
+                        insideMargin = RowMargin,
+                        onSelectedIndexChange = { index ->
+                            AppLocale.set(context, AppLocale.languages[index].first)
+                            context.findActivity()?.recreate()
+                        },
+                    )
                     RowDivider()
                     BasicComponent(
                         title = stringResource(R.string.licenses),
@@ -513,16 +520,8 @@ private fun validateConfig(context: Context, text: String?): String? {
     }
 }
 
-@Composable
-private fun currentLanguageName(): String {
-    val locale = LocalConfiguration.current.locales[0]
-    return locale.getDisplayLanguage(locale).replaceFirstChar { it.titlecase(locale) }
-}
-
-private fun openLanguageSettings(context: Context) {
-    val intent = Intent(android.provider.Settings.ACTION_APP_LOCALE_SETTINGS, Uri.fromParts("package", context.packageName, null))
-    runCatching { context.startActivity(intent) }
-}
+private fun Context.findActivity(): Activity? =
+    generateSequence(this) { (it as? ContextWrapper)?.baseContext }.filterIsInstance<Activity>().firstOrNull()
 
 private fun shareConfig(context: Context, text: String) {
     val dir = File(context.cacheDir, "export").apply { mkdirs() }

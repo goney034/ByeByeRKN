@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import com.dostup.app.AppLocale
 import com.dostup.app.DostupApp
 import com.dostup.app.R
 import top.yukonga.miuix.kmp.basic.NavigationBar
@@ -42,6 +43,11 @@ import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     private var connectRequested by mutableStateOf(false)
+
+    // Fork: the language is chosen in the app, not in the phone's settings.
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Leaves the splash theme before anything is drawn.

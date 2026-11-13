@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import com.dostup.app.AppLocale
 import com.dostup.app.R
 import com.dostup.app.ui.MainActivity
 import org.amnezia.awg.backend.GoBackend
@@ -16,9 +17,13 @@ object VpnNotification : GoBackend.ForegroundNotification {
 
     override fun id() = 1
 
-    override fun build(context: Context): Notification = notification(context, context.getString(R.string.status_connecting))
+    override fun build(base: Context): Notification {
+        val context = AppLocale.wrap(base)
+        return notification(context, context.getString(R.string.status_connecting))
+    }
 
-    fun createChannel(context: Context) {
+    fun createChannel(base: Context) {
+        val context = AppLocale.wrap(base)
         val channel = NotificationChannel(CHANNEL, "VPN", NotificationManager.IMPORTANCE_LOW).apply {
             description = context.getString(R.string.notification_channel_description)
             setShowBadge(false)
@@ -26,7 +31,8 @@ object VpnNotification : GoBackend.ForegroundNotification {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    fun update(context: Context, status: VpnStatus, exit: ExitInfo?, wantConnected: Boolean) {
+    fun update(base: Context, status: VpnStatus, exit: ExitInfo?, wantConnected: Boolean) {
+        val context = AppLocale.wrap(base)
         val manager = context.getSystemService(NotificationManager::class.java)
         val text = when (status) {
             is VpnStatus.Connected -> listOfNotNull(

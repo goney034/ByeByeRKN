@@ -12,6 +12,7 @@ import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import com.dostup.app.DostupApp
+import com.dostup.app.AppLocale
 import com.dostup.app.R
 import com.dostup.app.ui.MainActivity
 import com.dostup.app.vpn.VpnStatus
@@ -23,6 +24,11 @@ import kotlinx.coroutines.launch
 /** Quick settings tile that toggles the VPN without opening the app. */
 class ToggleTileService : TileService() {
     private var listening: Job? = null
+
+    // Fork: the language is chosen in the app, not in the phone's settings.
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(AppLocale.wrap(base))
+    }
 
     override fun onTileAdded() {
         DostupApp.instance.store.tileAdded = true

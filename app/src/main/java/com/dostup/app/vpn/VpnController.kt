@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.util.Log
 import androidx.annotation.StringRes
+import com.dostup.app.AppLocale
 import com.dostup.app.R
 import com.dostup.app.awg.Obfuscation
 import com.dostup.app.awg.QuicMask
@@ -1084,7 +1085,7 @@ class VpnController(private val context: Context, private val store: Store) {
     }
 
     /** Status texts follow the app's language. */
-    private fun text(@StringRes id: Int, vararg args: Any): String = context.getString(id, *args)
+    private fun text(@StringRes id: Int, vararg args: Any): String = AppLocale.wrap(context).getString(id, *args)
 
     private fun formatSeconds(seconds: Int) =
         if (seconds < 60) text(R.string.duration_seconds, seconds) else text(R.string.duration_minutes, seconds / 60)

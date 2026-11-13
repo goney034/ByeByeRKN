@@ -1,6 +1,7 @@
 package com.dostup.app
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import com.dostup.app.data.Store
 import com.dostup.app.share.ShareProxy
@@ -20,6 +21,11 @@ import kotlinx.coroutines.launch
 import org.amnezia.awg.backend.GoBackend
 
 class DostupApp : Application() {
+    // Fork: the language is chosen in the app, not in the phone's settings.
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(AppLocale.wrap(base))
+    }
+
     lateinit var store: Store
         private set
     lateinit var vpn: VpnController
