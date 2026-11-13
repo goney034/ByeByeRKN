@@ -22,7 +22,7 @@
 **وضعیت: بتا (نسخه‌ی ۰٫۲٫۰).** روی Galaxy S24 با اندروید ۱۶ آزمایش شده است. حداقل نسخه‌ی اندروید: ۸٫۰.
 
 <p align="center">
-  <img src="art/screenshot-home.webp" width="280" alt="صفحه‌ی اصلی برنامه">
+  <img src="art/screenshot-home-fa.webp" width="280" alt="صفحه‌ی اصلی برنامه">
 </p>
 
 ## امکانات
