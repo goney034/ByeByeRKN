@@ -60,11 +60,11 @@
     <string name="custom_in_use_summary">WARP، پنهان‌سازی و انتخاب سرور غیرفعال هستند</string>
     <string name="back_to_warp">بازگشت به WARP</string>
     <string name="section_shade">پرده‌ی اعلان‌ها</string>
-    <string name="tile_title">کاشی «ByeByeRKN»</string>
+    <string name="tile_title">دکمه‌ی «ByeByeRKN»</string>
     <string name="tile_added">به پرده‌ی اعلان اضافه شد</string>
     <string name="tile_add">افزودن به تنظیمات سریع</string>
-    <string name="toast_tile_added">کاشی در پرده‌ی اعلان قرار گرفت</string>
-    <string name="toast_tile_manual">پرده‌ی اعلان را باز کنید، روی مداد بزنید و کاشی «ByeByeRKN» را به پنل بکشید</string>
+    <string name="toast_tile_added">دکمه در پرده‌ی اعلان قرار گرفت</string>
+    <string name="toast_tile_manual">پرده‌ی اعلان را باز کنید، روی مداد بزنید و دکمه‌ی «ByeByeRKN» را به پنل بکشید</string>
     <string name="section_config">کانفیگ AmneziaWG</string>
     <string name="share_config">اشتراک‌گذاری کانفیگ</string>
     <string name="share_config_summary">فایل byebyerkn.conf</string>
