@@ -116,8 +116,8 @@
     <string name="obf_quic_summary">بسته‌ی اول HTTP/3 به یک وب‌سایت معمولی است</string>
     <string name="obf_stun_summary">بسته‌ی اول شبیه تماس تصویری WebRTC است</string>
     <string name="obf_dns_summary">بسته‌ی اول یک درخواست DNS است</string>
-    <string name="obf_sip_summary">بسته‌ی اول شبیه تلفن اینترنتی (IP) است</string>
-    <string name="obf_heavy">تقویت‌شده</string>
+    <string name="obf_sip_summary">بسته‌ی اول شبیه تلفن اینترنتی (VoIP) است</string>
+    <string name="obf_heavy">قوی</string>
     <string name="obf_heavy_summary">تعداد زیادی بسته‌ی زائد، برای شبکه‌های سخت‌گیر</string>
     <string name="obf_none">بدون پنهان‌سازی</string>
     <string name="obf_none_summary">WireGuard معمولی</string>
@@ -128,7 +128,7 @@
     <string name="st_reregistering">در حال به‌روزرسانی ثبت‌نام WARP…</string>
     <string name="st_registering_masque">ثبت‌نام برای MASQUE…</string>
     <string name="st_checking_known">در حال بررسی مسیرهای شناخته‌شده…</string>
-    <string name="st_scanning">جست‌وجوی سرور (%1$s): %2$d از %3$d، پاسخ‌دهنده: %4$d</string>
+    <string name="st_scanning">جست‌وجوی سرور (%1$s): %2$d از %3$d بررسی شد، %4$d سرور پاسخ داد</string>
     <string name="st_connecting_route">در حال اتصال: %1$s · %2$s</string>
     <string name="st_connecting_masque">در حال اتصال از طریق MASQUE (%1$s)…</string>
     <string name="st_connecting_custom">در حال اتصال با کانفیگ شخصی…</string>
@@ -138,19 +138,19 @@
     <string name="custom_endpoint">کانفیگ شخصی</string>
     <string name="err_whitelist">به نظر می‌رسد اپراتور فهرست سفید فعال کرده است: فقط سایت‌های مجاز باز می‌شوند و VPN از این مسیر کار نمی‌کند.</string>
     <string name="err_no_server">هیچ سروری پاسخ نداد.</string>
-    <string name="err_register">ثبت‌نام در WARP ناموفق بود: %1$s. اگر API کلودفلر در شبکه‌ی شما در دسترس نیست، در تنظیمات یک کانفیگ آماده وارد کنید.</string>
+    <string name="err_register">ثبت‌نام در WARP ناموفق بود: %1$s. اگر API Cloudflare در شبکه‌ی شما در دسترس نیست، در تنظیمات یک کانفیگ آماده وارد کنید.</string>
     <string name="err_background">اندروید اجازه نداد VPN در پس‌زمینه روشن شود. روی «اتصال» بزنید.</string>
     <string name="err_custom_no_handshake">سرور کانفیگ واردشده به handshake پاسخ نداد.</string>
     <string name="err_retry_in">%1$s تلاش مجدد پس از %2$s.</string>
     <string name="err_vpn_not_authorized">مجوز VPN داده نشده است. دوباره روی «اتصال» بزنید و اتصال را مجاز کنید.</string>
     <string name="err_vpn_service">سیستم سرویس VPN را راه‌اندازی نکرد. دوباره تلاش کنید.</string>
     <string name="err_tun">ساخت رابط VPN ناموفق بود. شاید VPN دیگری یا «VPN همیشه روشن» برنامه‌ی دیگری فعال است.</string>
-    <string name="err_dns_resolution">پیدا کردن آدرس سرور %1$s ناموفق بود.</string>
+    <string name="err_dns_resolution">آدرس سرور %1$s از طریق DNS پیدا نشد.</string>
     <string name="err_tunnel_start">تونل راه‌اندازی نشد (کد %1$s).</string>
     <string name="err_vpn_generic">خطای VPN: %1$s</string>
     <string name="reason_failover_test">بررسی تعویض مسیر</string>
     <string name="reason_route_worse">مسیر بدتر شد</string>
-    <string name="reason_stale_handshake">handshake به‌روز نشده است: %1$d ثانیه</string>
+    <string name="reason_stale_handshake">handshake جدیدی به مدت %1$d ثانیه انجام نشد</string>
     <string name="reason_no_replies">داده ارسال می‌شود اما پاسخی نمی‌آید</string>
     <string name="duration_seconds">%1$d ثانیه</string>
     <string name="duration_minutes">%1$d دقیقه</string>
@@ -163,7 +163,7 @@
     <!-- Notification and tile -->
     <string name="notification_channel_description">نشان می‌دهد که VPN فعال است</string>
     <string name="notification_connected">متصل</string>
-    <string name="notification_retrying">ارتباط برقرار نیست، دوباره تلاش می‌کنم…</string>
+    <string name="notification_retrying">ارتباط برقرار نیست؛ در حال تلاش مجدد…</string>
     <string name="tile_error">خطا</string>
     <string name="tile_disconnected">قطع شده</string>
 
@@ -171,17 +171,17 @@
     <string name="section_background">کار در پس‌زمینه</string>
     <string name="battery_unrestricted">بدون محدودیت باتری</string>
     <string name="battery_unrestricted_on">مجاز است: اندروید برای صرفه‌جویی در باتری VPN را متوقف نمی‌کند</string>
-    <string name="battery_unrestricted_off">اندروید ممکن است برای صرفه‌جویی در باتری VPN را متوقف کند. برای مجاز کردن بزنید</string>
+    <string name="battery_unrestricted_off">اندروید ممکن است برای صرفه‌جویی در باتری VPN را متوقف کند. برای مجاز کردن لمس کنید</string>
     <string name="autostart">اجرای خودکار</string>
     <string name="autostart_summary">آن را برای ByeByeRKN روشن کنید، وگرنه سیستم گوشی VPN را متوقف می‌کند</string>
-    <string name="maker_battery">صرفه‌جویی باتری برای برنامه</string>
+    <string name="maker_battery">بهینه‌سازی باتری برنامه</string>
     <string name="maker_battery_summary">گزینه‌ی «بدون محدودیت» را انتخاب کنید</string>
     <string name="background_chip">اجازه‌ی کار در پس‌زمینه</string>
 
     <!-- WARP+ -->
     <string name="warp_plus_key">کلید WARP+</string>
     <string name="warp_plus_none">تنظیم نشده: WARP رایگان معمولی</string>
-    <string name="warp_plus_dialog_text">این کلید مسیرهای سریع‌تر WARP+ را فعال می‌کند و به دستگاه‌های برنامه گره می‌خورد. بدون کلید، همه‌چیز روی WARP رایگان همان‌طور کار می‌کند. برای فراموش کردن کلید، کادر را خالی بگذارید.</string>
+    <string name="warp_plus_dialog_text">این کلید مسیرهای سریع‌تر WARP+ را فعال می‌کند و به دستگاه‌های برنامه پیوند داده می‌شود. بدون کلید، همه‌چیز روی WARP رایگان همان‌طور کار می‌کند. برای حذف کلید، کادر را خالی بگذارید.</string>
     <string name="warp_plus_checking">در حال بررسی کلید…</string>
     <string name="warp_plus_on">WARP+ روشن است</string>
     <string name="warp_plus_accepted">کلید پذیرفته شد، اما Cloudflare برای این حساب WARP+ را فعال نکرد</string>
@@ -189,15 +189,15 @@
     <string name="warp_plus_bad_format">یک کلید به این شکل است: xxxxxxxx-xxxxxxxx-xxxxxxxx</string>
     <string name="warp_plus_invalid">Cloudflare کلید را نپذیرفت: معتبر نیست</string>
     <string name="warp_plus_unreachable">اتصال به Cloudflare برقرار نشد. بعداً یا با VPN روشن دوباره تلاش کنید</string>
-    <string name="warp_plus_forgotten">کلید فراموش شد. برای بازگشت به WARP رایگان، دوباره ثبت‌نام کنید</string>
+    <string name="warp_plus_forgotten">کلید حذف شد. برای بازگشت به WARP رایگان، دوباره ثبت‌نام کنید</string>
 
     <!-- Sharing -->
     <string name="section_share">اشتراک‌گذاری VPN</string>
     <string name="share_vpn">اشتراک‌گذاری VPN</string>
     <string name="share_vpn_summary">لپ‌تاپ یا تلویزیونی که به هات‌اسپات گوشی وصل است از طریق VPN می‌رود. تا وقتی VPN متصل است کار می‌کند</string>
     <string name="share_address">آدرس پروکسی</string>
-    <string name="share_no_hotspot">هات‌اسپات، تدرینگ USB یا بلوتوث گوشی را روشن کنید</string>
+    <string name="share_no_hotspot">هات‌اسپات گوشی یا اشتراک اینترنت با USB یا بلوتوث را روشن کنید</string>
     <string name="share_protocols">HTTP و SOCKS5، بدون رمز عبور</string>
     <string name="share_how">نحوه‌ی اتصال</string>
-    <string name="share_how_summary">کامپیوتر: این آدرس و پورت را در تنظیمات شبکه به‌عنوان پروکسی HTTP وارد کنید. تلویزیون: تنظیمات همین شبکه‌ی Wi-Fi ← Proxy ← Manual. فقط TCP از پروکسی عبور می‌کند: بازی‌ها و تماس‌ها از VPN رد نمی‌شوند.</string>
+    <string name="share_how_summary">کامپیوتر: این آدرس و پورت را در تنظیمات شبکه به‌عنوان پروکسی HTTP وارد کنید. تلویزیون: در تنظیمات همین شبکه‌ی Wi-Fi، بخش Proxy، حالت Manual را انتخاب کنید. فقط TCP از پروکسی عبور می‌کند: بازی‌ها و تماس‌ها از VPN رد نمی‌شوند.</string>
 </resources>
