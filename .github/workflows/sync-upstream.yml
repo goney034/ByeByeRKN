@@ -51,10 +51,20 @@ jobs:
         if: steps.fetch.outputs.new != '0'
         run: |
           if ! git merge upstream/main --no-edit -m "Merge upstream ${UPSTREAM}@${{ steps.fetch.outputs.head }}"; then
-            echo "::error::Merge conflict with upstream. Files:"
-            git diff --name-only --diff-filter=U
-            git merge --abort
-            exit 1
+            conflicts=$(git diff --name-only --diff-filter=U)
+            # This fork only changes the version number in build.gradle.kts, and upstream bumps it with
+            # every release. When that is the only conflict, upstream's version wins.
+            if [ "$conflicts" = "app/build.gradle.kts" ]; then
+              echo "Only the version number conflicts: taking upstream's build.gradle.kts."
+              git checkout --theirs -- app/build.gradle.kts
+              git add app/build.gradle.kts
+              git commit --no-edit
+            else
+              echo "::error::Merge conflict with upstream. Files:"
+              echo "$conflicts"
+              git merge --abort
+              exit 1
+            fi
           fi
 
       - name: Fill missing Persian strings
