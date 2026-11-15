@@ -15,10 +15,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/jchv/go-webview2"
 )
 
 //go:embed index.html
@@ -73,8 +76,39 @@ func main() {
 	}
 	url := "http://" + ln.Addr().String() + "/"
 	fmt.Println("ByeByeRKN panel:", url)
+	go func() { _ = http.Serve(ln, mux) }()
+	showWindow(url)
+	// The window was closed: that ends the app, and the tunnel with it.
+	a.disconnect()
+}
+
+// showWindow opens the panel in a window of its own and returns when it is closed. It uses the
+// WebView2 runtime that comes with Windows 10/11; without it, an Edge/Chrome "app" window is used.
+func showWindow(url string) {
+	runtime.LockOSThread()
+	w := webview2.NewWithOptions(webview2.WebViewOptions{
+		AutoFocus: true,
+		WindowOptions: webview2.WindowOptions{
+			Title:  "ByeByeRKN",
+			Width:  460,
+			Height: 680,
+			Center: true,
+		},
+	})
+	if w != nil {
+		defer w.Destroy()
+		w.Navigate(url)
+		w.Run()
+		return
+	}
+	for _, browser := range []string{"msedge", "chrome"} {
+		cmd := exec.Command("cmd", "/c", "start", "/wait", browser, "--app="+url, "--window-size=460,680")
+		if cmd.Run() == nil {
+			return
+		}
+	}
 	_ = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	_ = http.Serve(ln, mux)
+	select {} // only a browser tab is open: stay alive until the tunnel is closed from the page
 }
 
 func (a *app) handleStatus(w http.ResponseWriter, r *http.Request) {

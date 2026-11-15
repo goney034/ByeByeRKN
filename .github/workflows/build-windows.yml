@@ -33,6 +33,9 @@ jobs:
           CGO_ENABLED: "0"
         run: |
           mkdir -p ../../dist/ByeByeRKN-Windows
+          # The window needs go-webview2; added here so the Android build and upstream merges never touch go.mod.
+          go get github.com/jchv/go-webview2@latest
+          go mod tidy
           go build -trimpath -buildvcs=false -ldflags='-s -w' -o ../../dist/ByeByeRKN-Windows/usque.exe .
           go build -trimpath -buildvcs=false -ldflags='-s -w -H=windowsgui' -o ../../dist/ByeByeRKN-Windows/ByeByeRKN.exe ./winapp
       - name: Add wintun.dll
@@ -43,7 +46,7 @@ jobs:
       - name: Pack
         run: |
           cat > dist/ByeByeRKN-Windows/README.txt <<'TXT'
-          Run ByeByeRKN.exe (Windows asks for administrator rights). A page opens in your browser: press the big button.
+          Run ByeByeRKN.exe (Windows asks for administrator rights). A window opens: press the big button.
           Keep wintun.dll and usque.exe in the same folder as ByeByeRKN.exe.
           TXT
           cd dist && zip -qr ByeByeRKN-Windows.zip ByeByeRKN-Windows
