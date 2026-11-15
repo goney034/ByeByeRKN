@@ -3,4 +3,5 @@
 <resources>
     <string name="theme_switch_to_day">Светлая тема</string>
     <string name="theme_switch_to_night">Тёмная тема</string>
+    <string name="notification_traffic" translatable="false">↓ %1$s   ↑ %2$s</string>
 </resources>

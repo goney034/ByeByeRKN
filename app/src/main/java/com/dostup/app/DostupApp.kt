@@ -67,9 +67,10 @@ class DostupApp : Application() {
         }
         scope.launch {
             // Only the kind of status changes the text, not every step of a search.
-            combine(vpn.status, vpn.exit) { status, exit -> status::class to exit?.colo }
+            // Fork: the counters are in the notification too, so they change it every second.
+            combine(vpn.status, vpn.exit, vpn.traffic) { status, exit, traffic -> Triple(status::class, exit?.colo, traffic) }
                 .distinctUntilChanged()
-                .collect { VpnNotification.update(this@DostupApp, vpn.status.value, vpn.exit.value, store.wantConnected) }
+                .collect { (_, _, traffic) -> VpnNotification.update(this@DostupApp, vpn.status.value, vpn.exit.value, store.wantConnected, traffic) }
         }
     }
 

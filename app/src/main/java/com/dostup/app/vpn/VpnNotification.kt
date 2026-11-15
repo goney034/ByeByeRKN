@@ -31,7 +31,7 @@ object VpnNotification : GoBackend.ForegroundNotification {
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    fun update(base: Context, status: VpnStatus, exit: ExitInfo?, wantConnected: Boolean) {
+    fun update(base: Context, status: VpnStatus, exit: ExitInfo?, wantConnected: Boolean, traffic: Traffic? = null) {
         val context = AppLocale.wrap(base)
         val manager = context.getSystemService(NotificationManager::class.java)
         val text = when (status) {
@@ -43,17 +43,30 @@ object VpnNotification : GoBackend.ForegroundNotification {
             is VpnStatus.Failed -> if (wantConnected) context.getString(R.string.notification_retrying) else null
             VpnStatus.Disconnected -> null
         }
-        if (text == null) manager.cancel(id()) else manager.notify(id(), notification(context, text))
+        // Fork: second line with the downloaded and uploaded amounts while connected.
+        val usage = if (status is VpnStatus.Connected && traffic != null) {
+            context.getString(R.string.notification_traffic, formatBytes(context, traffic.rx), formatBytes(context, traffic.tx))
+        } else null
+        if (text == null) manager.cancel(id()) else manager.notify(id(), notification(context, text, usage))
     }
 
-    private fun notification(context: Context, text: String): Notification {
+    private fun formatBytes(context: Context, bytes: Long): String = when {
+        bytes < 1024 -> context.getString(R.string.size_bytes, bytes)
+        bytes < 1024 * 1024 -> context.getString(R.string.size_kb, bytes / 1024.0)
+        bytes < 1024L * 1024 * 1024 -> context.getString(R.string.size_mb, bytes / (1024.0 * 1024))
+        else -> context.getString(R.string.size_gb, bytes / (1024.0 * 1024 * 1024))
+    }
+
+    private fun notification(context: Context, text: String, usage: String? = null): Notification {
         val open = PendingIntent.getActivity(
             context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
         return Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_tile)
             .setContentTitle(context.getString(R.string.app_name))
-            .setContentText(text)
+            .setContentText(if (usage == null) text else "$text · $usage")
+            .apply { if (usage != null) setStyle(Notification.BigTextStyle().bigText("$text\n$usage")) }
+            .setOnlyAlertOnce(true)
             .setContentIntent(open)
             .setOngoing(true)
             .build()
