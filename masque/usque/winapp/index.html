@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ByeByeRKN</title>
+<style>
+:root{--bg:#101012;--card:#18181b;--text:#fafafa;--sub:#a1a1aa;--brand:#00d5fe;--ring:#e4e4e7;--danger:#f87171}
+:root[data-theme=light]{--bg:#f4f5f7;--card:#fff;--text:#16181d;--sub:#5a606b;--brand:#0090b0;--ring:#2e323a;--danger:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:"Segoe UI",Tahoma,sans-serif;display:flex;flex-direction:column;align-items:center}
+.bar{width:100%;display:flex;justify-content:space-between;padding:12px 16px}
+button.icon{background:none;border:0;color:var(--text);font-size:22px;cursor:pointer;border-radius:50%;width:44px;height:44px}
+select{background:var(--card);color:var(--text);border:1px solid var(--sub);border-radius:8px;padding:6px 10px}
+main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px}
+#btn{width:190px;height:190px;border-radius:50%;border:2px solid var(--ring);background:none;color:var(--text);font-size:20px;cursor:pointer;transition:.4s}
+#btn.connected{border-color:var(--brand);box-shadow:0 0 40px color-mix(in srgb,var(--brand) 40%,transparent);color:var(--brand)}
+#btn.connecting{border-style:dashed;animation:spin 1.2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#status{color:var(--sub);min-height:24px}
+#status.err{color:var(--danger)}
+pre{width:min(560px,92vw);max-height:140px;overflow:auto;background:var(--card);color:var(--sub);border-radius:12px;padding:10px;font-size:12px;direction:ltr;text-align:left;margin:0 0 16px}
+</style>
+</head>
+<body>
+<div class="bar">
+  <button class="icon" id="theme" title="">☀</button>
+  <select id="lang"><option value="fa">فارسی</option><option value="en">English</option><option value="ru">Русский</option></select>
+</div>
+<main>
+  <button id="btn"></button>
+  <div id="status"></div>
+</main>
+<pre id="log"></pre>
+<script>
+const T={
+ fa:{connect:"اتصال",disconnect:"قطع",connecting:"در حال اتصال…",connected:"متصل شد",disconnected:"قطع است",day:"حالت روز",night:"حالت شب",
+     register:"ثبت حساب WARP ناموفق بود. اینترنت را بررسی کنید.",wintun:"فایل wintun.dll کنار برنامه نیست.",start:"اجرای هسته ناموفق بود.",dir:"rtl"},
+ en:{connect:"Connect",disconnect:"Disconnect",connecting:"Connecting…",connected:"Connected",disconnected:"Disconnected",day:"Day mode",night:"Night mode",
+     register:"WARP registration failed. Check your internet.",wintun:"wintun.dll is missing next to the app.",start:"Could not start the core.",dir:"ltr"},
+ ru:{connect:"Подключить",disconnect:"Отключить",connecting:"Подключение…",connected:"Подключено",disconnected:"Отключено",day:"Светлая тема",night:"Тёмная тема",
+     register:"Не удалось зарегистрировать WARP. Проверьте интернет.",wintun:"Рядом с программой нет wintun.dll.",start:"Не удалось запустить ядро.",dir:"ltr"}};
+const $=id=>document.getElementById(id);
+let lang=localStorage.lang||"fa", theme=localStorage.theme||"dark", st={state:"disconnected"};
+function render(){
+  const t=T[lang];
+  document.documentElement.lang=lang;document.documentElement.dir=t.dir;
+  document.documentElement.dataset.theme=theme;
+  $("theme").textContent=theme==="dark"?"☀":"🌙";$("theme").title=theme==="dark"?t.day:t.night;
+  $("lang").value=lang;
+  const b=$("btn");b.className=st.state;
+  b.textContent=st.state==="connected"?t.disconnect:st.state==="connecting"?t.connecting:t.connect;
+  const s=$("status");s.className=st.state==="error"?"err":"";
+  s.textContent=st.state==="error"?(t[st.message]||st.message):t[st.state==="error"?"disconnected":st.state];
+  $("log").textContent=(st.log||[]).join("\n");
+}
+async function poll(){try{st=await (await fetch("/api/status")).json();render()}catch(e){}}
+$("btn").onclick=async()=>{
+  const path=st.state==="connected"||st.state==="connecting"?"/api/disconnect":"/api/connect";
+  st=await (await fetch(path,{method:"POST"})).json();render()};
+$("theme").onclick=()=>{theme=theme==="dark"?"light":"dark";localStorage.theme=theme;render()};
+$("lang").onchange=e=>{lang=e.target.value;localStorage.lang=lang;render()};
+window.addEventListener("pagehide",()=>{});
+render();poll();setInterval(poll,1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+name: Build Windows
+
+# Builds the Windows app: the MASQUE core (usque.exe), the control panel (ByeByeRKN.exe) and wintun.dll,
+# packed in one zip. Runs by hand, and the Release workflow can attach the zip to a release.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "masque/usque/**"
+      - ".github/workflows/build-windows.yml"
+  workflow_call:
+
+jobs:
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: masque/usque/go.mod
+          cache-dependency-path: masque/usque/go.sum
+      - name: Build exe files
+        working-directory: masque/usque
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p ../../dist/ByeByeRKN-Windows
+          go build -trimpath -buildvcs=false -ldflags='-s -w' -o ../../dist/ByeByeRKN-Windows/usque.exe .
+          go build -trimpath -buildvcs=false -ldflags='-s -w -H=windowsgui' -o ../../dist/ByeByeRKN-Windows/ByeByeRKN.exe ./winapp
+      - name: Add wintun.dll
+        run: |
+          curl -fsSL https://www.wintun.net/builds/wintun-0.14.1.zip -o wintun.zip
+          unzip -q wintun.zip
+          cp wintun/bin/amd64/wintun.dll dist/ByeByeRKN-Windows/
+      - name: Pack
+        run: |
+          cat > dist/ByeByeRKN-Windows/README.txt <<'TXT'
+          Run ByeByeRKN.exe (Windows asks for administrator rights). A page opens in your browser: press the big button.
+          Keep wintun.dll and usque.exe in the same folder as ByeByeRKN.exe.
+          TXT
+          cd dist && zip -qr ByeByeRKN-Windows.zip ByeByeRKN-Windows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ByeByeRKN-Windows
+          path: dist/ByeByeRKN-Windows.zip
