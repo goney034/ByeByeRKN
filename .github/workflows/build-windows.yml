@@ -10,6 +10,12 @@ on:
       - ".github/workflows/build-windows.yml"
   workflow_call:
 
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
 jobs:
   windows:
     runs-on: ubuntu-latest
@@ -45,3 +51,11 @@ jobs:
         with:
           name: ByeByeRKN-Windows
           path: dist/ByeByeRKN-Windows.zip
+      # A pre-release, so the phone app's update check (which ignores pre-releases) never sees it.
+      - name: Publish test build
+        if: github.event_name != 'workflow_call'
+        run: |
+          gh release delete windows-latest --yes --cleanup-tag 2> /dev/null || true
+          gh release create windows-latest dist/ByeByeRKN-Windows.zip --prerelease --target "$GITHUB_SHA" \
+            --title "ByeByeRKN Windows (test build)" \
+            --notes "نسخه‌ی آزمایشی ویندوز. zip را باز کنید و ByeByeRKN.exe را اجرا کنید. / Windows test build: unzip and run ByeByeRKN.exe."
