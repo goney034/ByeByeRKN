@@ -3,4 +3,17 @@
 <resources>
     <string name="theme_switch_to_day">Switch to day mode</string>
     <string name="theme_switch_to_night">Switch to night mode</string>
+    <string name="log_title">Log</string>
+    <string name="log_back">Back</string>
+    <string name="log_refresh">Refresh</string>
+    <string name="log_copy">Copy</string>
+    <string name="log_share">Share</string>
+    <string name="log_copied">Copied</string>
+    <string name="log_empty">The log is empty</string>
+    <string name="log_unlocked">Log enabled</string>
+    <string name="log_locked">Log disabled</string>
+    <string name="log_show">Show log</string>
+    <string name="log_show_summary">What the app has written while running</string>
+    <string name="log_feature">Log feature</string>
+    <string name="log_feature_summary">Turn off to hide this section. To get it back, tap the version in About 7 times</string>
 </resources>

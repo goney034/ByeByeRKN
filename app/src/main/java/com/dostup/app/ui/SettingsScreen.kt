@@ -107,6 +107,15 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
         }
     }
     val scrollBehavior = MiuixScrollBehavior()
+    // Fork: hidden log page. Seven quick taps on the version switch it on or off.
+    var logEnabled by remember { mutableStateOf(DevLog.enabled(context)) }
+    var showLog by rememberSaveable { mutableStateOf(false) }
+    var versionTaps by remember { mutableStateOf(0) }
+    var lastTap by remember { mutableStateOf(0L) }
+    if (showLog) {
+        LogScreen(onBack = { showLog = false })
+        return
+    }
 
     fun withConfig(action: (String) -> Unit) {
         scope.launch {
@@ -369,6 +378,31 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                 }
             }
 
+            if (logEnabled) {
+                item {
+                    SectionTitle(stringResource(R.string.log_title))
+                    SectionCard {
+                        SuperArrow(
+                            title = stringResource(R.string.log_show),
+                            summary = stringResource(R.string.log_show_summary),
+                            insideMargin = RowMargin,
+                            onClick = { showLog = true },
+                        )
+                        RowDivider()
+                        SuperSwitch(
+                            title = stringResource(R.string.log_feature),
+                            summary = stringResource(R.string.log_feature_summary),
+                            checked = true,
+                            onCheckedChange = {
+                                logEnabled = false
+                                DevLog.setEnabled(context, false)
+                            },
+                            insideMargin = RowMargin,
+                        )
+                    }
+                }
+            }
+
             item {
                 SectionTitle(stringResource(R.string.section_about))
                 SectionCard {
@@ -376,6 +410,17 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                         title = "ByeByeRKN ${BuildConfig.VERSION_NAME}",
                         summary = "AmneziaWG ${vpn.awgVersion}",
                         insideMargin = RowMargin,
+                        onClick = {
+                            val now = System.currentTimeMillis()
+                            versionTaps = if (now - lastTap < 1500) versionTaps + 1 else 1
+                            lastTap = now
+                            if (versionTaps >= 7) {
+                                versionTaps = 0
+                                logEnabled = !logEnabled
+                                DevLog.setEnabled(context, logEnabled)
+                                toast(context, resources.getString(if (logEnabled) R.string.log_unlocked else R.string.log_locked))
+                            }
+                        },
                     )
                     // Fork: the language is chosen here, on every Android version, and not in the phone's settings.
                     RowDivider()

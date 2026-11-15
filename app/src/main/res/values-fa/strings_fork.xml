@@ -3,4 +3,17 @@
 <resources>
     <string name="theme_switch_to_day">حالت روز</string>
     <string name="theme_switch_to_night">حالت شب</string>
+    <string name="log_title">لاگ</string>
+    <string name="log_back">بازگشت</string>
+    <string name="log_refresh">به‌روزرسانی</string>
+    <string name="log_copy">کپی</string>
+    <string name="log_share">اشتراک‌گذاری</string>
+    <string name="log_copied">کپی شد</string>
+    <string name="log_empty">لاگ خالی است</string>
+    <string name="log_unlocked">لاگ فعال شد</string>
+    <string name="log_locked">لاگ غیرفعال شد</string>
+    <string name="log_show">نمایش لاگ</string>
+    <string name="log_show_summary">آنچه برنامه هنگام کار نوشته است</string>
+    <string name="log_feature">قابلیت لاگ</string>
+    <string name="log_feature_summary">برای پنهان کردن این بخش خاموش کنید. برای برگرداندن، ۷ بار روی نسخه در «درباره» بزنید</string>
 </resources>
