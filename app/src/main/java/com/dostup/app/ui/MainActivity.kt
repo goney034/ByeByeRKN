@@ -53,7 +53,9 @@ class MainActivity : ComponentActivity() {
         // Leaves the splash theme before anything is drawn.
         setTheme(R.style.Theme_Dostup)
         super.onCreate(savedInstanceState)
-        // The app is dark-only, so the system bars always get light icons.
+        AppTheme.load(this)
+        // First frame; DostupTheme keeps the bars in step with day/night after this.
+        // The app starts dark, so the system bars always get light icons.
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),

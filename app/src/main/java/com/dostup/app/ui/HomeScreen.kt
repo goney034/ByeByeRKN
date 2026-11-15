@@ -42,6 +42,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -131,6 +133,7 @@ fun HomeScreen(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Palette.bgBase).statusBarsPadding()) {
+        ThemeToggle(Modifier.align(Alignment.TopEnd).padding(8.dp))
         // TVs and phones turned sideways: side by side, since a column doesn't fit the height.
         if (maxWidth > maxHeight && maxWidth >= WIDE_LAYOUT_MIN_WIDTH) {
             Row(Modifier.fillMaxSize().padding(horizontal = 32.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -168,7 +171,8 @@ private fun ConnectButton(status: VpnStatus, modifier: Modifier = Modifier, diam
     val connected = status is VpnStatus.Connected
     val working = status is VpnStatus.Working
     val ringColor = remember { Animatable(Palette.textSecondary) }
-    LaunchedEffect(connected) { ringColor.animateTo(if (connected) Palette.brand else Palette.textSecondary, tween(400)) }
+    val dark = AppTheme.isDark
+    LaunchedEffect(connected, dark) { ringColor.animateTo(if (connected) Palette.brand else Palette.textSecondary, tween(400)) }
     val sweep by animateFloatAsState(if (working) 160f else 360f, tween(500), label = "sweep")
     val glow by animateFloatAsState(if (connected) 1f else 0.35f, tween(600), label = "glow")
 
@@ -384,4 +388,53 @@ private fun formatBytes(bytes: Long): String = when {
 private fun formatDuration(seconds: Long): String {
     val s = seconds.coerceAtLeast(0)
     return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60) else "%d:%02d".format(s / 60, s % 60)
+}
+
+/** Fork: day/night button. Shows a sun on the night screen (tap for day) and a moon on the day screen. */
+@Composable
+private fun ThemeToggle(modifier: Modifier = Modifier) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val dark = AppTheme.isDark
+    val color = Palette.textSecondary
+    val label = stringResource(if (dark) R.string.theme_switch_to_day else R.string.theme_switch_to_night)
+    Box(
+        modifier
+            .size(48.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .clickable(role = androidx.compose.ui.semantics.Role.Button) { AppTheme.toggle(context) }
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        androidx.compose.foundation.Canvas(Modifier.size(24.dp)) {
+            val c = center
+            if (dark) {
+                // Sun: a disc with eight rays.
+                val r = size.minDimension * 0.22f
+                drawCircle(color, r, c)
+                for (i in 0 until 8) {
+                    val a = Math.toRadians(i * 45.0)
+                    val dx = Math.cos(a).toFloat()
+                    val dy = Math.sin(a).toFloat()
+                    drawLine(
+                        color,
+                        androidx.compose.ui.geometry.Offset(c.x + dx * r * 1.6f, c.y + dy * r * 1.6f),
+                        androidx.compose.ui.geometry.Offset(c.x + dx * r * 2.2f, c.y + dy * r * 2.2f),
+                        strokeWidth = 2.dp.toPx(),
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    )
+                }
+            } else {
+                // Moon: a disc with a bite taken out of it.
+                val r = size.minDimension * 0.42f
+                val path = androidx.compose.ui.graphics.Path().apply {
+                    addOval(androidx.compose.ui.geometry.Rect(c, r))
+                }
+                val bite = androidx.compose.ui.graphics.Path().apply {
+                    addOval(androidx.compose.ui.geometry.Rect(androidx.compose.ui.geometry.Offset(c.x + r * 0.55f, c.y - r * 0.45f), r * 0.85f))
+                }
+                val moon = androidx.compose.ui.graphics.Path.combine(androidx.compose.ui.graphics.PathOperation.Difference, path, bite)
+                drawPath(moon, color)
+            }
+        }
+    }
 }

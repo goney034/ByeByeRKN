@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fork-only strings, kept apart from upstream's strings.xml to avoid merge conflicts. -->
+<resources>
+    <string name="theme_switch_to_day">Switch to day mode</string>
+    <string name="theme_switch_to_night">Switch to night mode</string>
+</resources>
