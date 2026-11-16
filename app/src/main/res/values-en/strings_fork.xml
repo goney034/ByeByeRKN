@@ -16,4 +16,14 @@
     <string name="log_show_summary">What the app has written while running</string>
     <string name="log_feature">Log feature</string>
     <string name="log_feature_summary">Turn off to hide this section. To get it back, tap the version in About 7 times</string>
+    <string name="autoapp_section">Auto-connect</string>
+    <string name="autoapp_title">VPN for chosen apps</string>
+    <string name="autoapp_summary">Turns on when a chosen app is opened and off when you leave it</string>
+    <string name="autoapp_need_access">Allow "Usage access" for ByeByeRKN</string>
+    <string name="autoapp_no_access">No usage access: switch it off and on again, or allow it in the phone settings</string>
+    <string name="autoapp_choose">Choose apps</string>
+    <string name="autoapp_choose_hint">The VPN turns on when you open one of them. Connect manually once first so the VPN permission is granted.</string>
+    <string name="autoapp_count">%1$d chosen</string>
+    <string name="autoapp_channel">Auto-connect</string>
+    <string name="autoapp_notification">Watching the chosen apps</string>
 </resources>

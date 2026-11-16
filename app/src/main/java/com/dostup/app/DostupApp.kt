@@ -52,6 +52,7 @@ class DostupApp : Application() {
         VpnNotification.createChannel(this)
         GoBackend.setForegroundNotification(VpnNotification)
         vpn = VpnController(this, store)
+        com.dostup.app.autoapp.AutoApps.sync(this)
         // Started by the system's "Always-on VPN" setting.
         GoBackend.setAlwaysOnCallback { vpn.connect() }
         share = ShareProxy(acceptOn = { address -> address in TetherInterfaces.addresses(this) })

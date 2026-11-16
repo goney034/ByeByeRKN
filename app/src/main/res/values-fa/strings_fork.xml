@@ -16,4 +16,14 @@
     <string name="log_show_summary">آنچه برنامه هنگام کار نوشته است</string>
     <string name="log_feature">قابلیت لاگ</string>
     <string name="log_feature_summary">برای پنهان کردن این بخش خاموش کنید. برای برگرداندن، ۷ بار روی نسخه در «درباره» بزنید</string>
+    <string name="autoapp_section">اتصال خودکار</string>
+    <string name="autoapp_title">VPN برای برنامه‌های انتخابی</string>
+    <string name="autoapp_summary">با باز شدن برنامه‌ی انتخابی روشن و با خروج از آن خاموش می‌شود</string>
+    <string name="autoapp_need_access">دسترسی «Usage access» را برای ByeByeRKN فعال کنید</string>
+    <string name="autoapp_no_access">دسترسی به آمار استفاده داده نشده: سوییچ را خاموش و روشن کنید یا در تنظیمات گوشی اجازه بدهید</string>
+    <string name="autoapp_choose">انتخاب برنامه‌ها</string>
+    <string name="autoapp_choose_hint">با باز کردن یکی از این برنامه‌ها VPN روشن می‌شود. یک بار دستی وصل شوید تا مجوز VPN داده شود.</string>
+    <string name="autoapp_count">%1$d برنامه انتخاب شده</string>
+    <string name="autoapp_channel">اتصال خودکار</string>
+    <string name="autoapp_notification">در حال پایش برنامه‌های انتخابی</string>
 </resources>

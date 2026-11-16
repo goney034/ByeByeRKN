@@ -202,7 +202,7 @@ fun AppsScreen(vpn: VpnController, store: Store) {
 
 /** One row of a visually continuous card built from separate lazy items. */
 @Composable
-private fun AppRow(app: AppEntry, checked: Boolean, first: Boolean, last: Boolean, onToggle: () -> Unit) {
+internal fun AppRow(app: AppEntry, checked: Boolean, first: Boolean, last: Boolean, onToggle: () -> Unit) {
     val top = if (first) 20.dp else 0.dp
     val bottom = if (last) 20.dp else 0.dp
     Column(

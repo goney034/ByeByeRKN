@@ -17,4 +17,14 @@
     <string name="log_show_summary">Что приложение записало за время работы</string>
     <string name="log_feature">Функция журнала</string>
     <string name="log_feature_summary">Выключите, чтобы скрыть этот раздел. Включить снова: 7 нажатий на версию в «О приложении»</string>
+    <string name="autoapp_section">Авто‑подключение</string>
+    <string name="autoapp_title">VPN для выбранных приложений</string>
+    <string name="autoapp_summary">Включается при открытии выбранного приложения и выключается при выходе из него</string>
+    <string name="autoapp_need_access">Разрешите «Доступ к статистике использования» для ByeByeRKN</string>
+    <string name="autoapp_no_access">Нет доступа к статистике: нажмите переключатель ещё раз или выдайте разрешение в настройках</string>
+    <string name="autoapp_choose">Выбрать приложения</string>
+    <string name="autoapp_choose_hint">VPN включится, когда откроете одно из них. Один раз подключитесь вручную, чтобы выдать разрешение VPN.</string>
+    <string name="autoapp_count">Выбрано: %1$d</string>
+    <string name="autoapp_channel">Авто‑подключение</string>
+    <string name="autoapp_notification">Слежу за выбранными приложениями</string>
 </resources>

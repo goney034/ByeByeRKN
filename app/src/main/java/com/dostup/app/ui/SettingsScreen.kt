@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dostup.app.AppLocale
 import com.dostup.app.BuildConfig
 import com.dostup.app.R
+import com.dostup.app.autoapp.AutoApps
 import com.dostup.app.awg.Obfuscation
 import com.dostup.app.awg.QuicMask
 import com.dostup.app.data.DnsOption
@@ -110,6 +111,21 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
     // Fork: hidden log page. Seven quick taps on the version switch it on or off.
     var logEnabled by remember { mutableStateOf(DevLog.enabled(context)) }
     var showLog by rememberSaveable { mutableStateOf(false) }
+    // Fork: connect while chosen apps are open.
+    var showAutoApps by rememberSaveable { mutableStateOf(false) }
+    var autoOn by remember { mutableStateOf(AutoApps.enabled(context)) }
+    var usageOk by remember { mutableStateOf(AutoApps.hasUsageAccess(context)) }
+    var autoCount by remember { mutableStateOf(AutoApps.apps(context).size) }
+    // The permission is given on a system screen: look again whenever the user is back.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        usageOk = AutoApps.hasUsageAccess(context)
+        autoCount = AutoApps.apps(context).size
+        AutoApps.sync(context)
+    }
+    if (showAutoApps) {
+        AutoAppsScreen(onBack = { showAutoApps = false })
+        return
+    }
     var versionTaps by remember { mutableStateOf(0) }
     var lastTap by remember { mutableStateOf(0L) }
     if (showLog) {
@@ -198,6 +214,42 @@ fun SettingsScreen(vpn: VpnController, store: Store) {
                             summary = stringResource(R.string.maker_battery_summary),
                             insideMargin = RowMargin,
                             onClick = { BackgroundWork.start(context, intent) },
+                        )
+                    }
+                }
+            }
+
+            item {
+                SectionTitle(stringResource(R.string.autoapp_section))
+                SectionCard {
+                    SuperSwitch(
+                        title = stringResource(R.string.autoapp_title),
+                        summary = stringResource(R.string.autoapp_summary),
+                        checked = autoOn,
+                        onCheckedChange = { on ->
+                            autoOn = on
+                            AutoApps.setEnabled(context, on)
+                            if (on && !usageOk) {
+                                toast(context, resources.getString(R.string.autoapp_need_access))
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS, Uri.parse("package:${context.packageName}")),
+                                    )
+                                }.onFailure {
+                                    context.startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                }
+                            }
+                            AutoApps.sync(context)
+                        },
+                        insideMargin = RowMargin,
+                    )
+                    if (autoOn) {
+                        RowDivider()
+                        SuperArrow(
+                            title = stringResource(R.string.autoapp_choose),
+                            summary = if (!usageOk) stringResource(R.string.autoapp_no_access) else stringResource(R.string.autoapp_count, autoCount),
+                            insideMargin = RowMargin,
+                            onClick = { showAutoApps = true },
                         )
                     }
                 }
