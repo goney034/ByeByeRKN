@@ -7,19 +7,19 @@
 <h1 align="center">ByeByeRKN</h1>
 
 <p align="center">
-  <a href="https://github.com/alexus282/ByeByeRKN/releases/latest"><img src="https://img.shields.io/github/v/release/alexus282/ByeByeRKN?color=blue" alt="release"></a>
-  <a href="https://github.com/alexus282/ByeByeRKN/releases"><img src="https://img.shields.io/github/downloads/alexus282/ByeByeRKN/total?color=brightgreen" alt="downloads"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/alexus282/ByeByeRKN?color=orange" alt="license"></a>
-  <a href="https://github.com/alexus282/ByeByeRKN"><img src="https://img.shields.io/github/languages/code-size/alexus282/ByeByeRKN?color=blue" alt="code size"></a>
+  <a href="https://github.com/goney034/ByeByeRKN/releases/latest"><img src="https://img.shields.io/github/v/release/goney034/ByeByeRKN?color=blue" alt="release"></a>
+  <a href="https://github.com/goney034/ByeByeRKN/releases"><img src="https://img.shields.io/github/downloads/alexus282/ByeByeRKN/total?color=brightgreen" alt="downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/goney034/ByeByeRKN?color=orange" alt="license"></a>
+  <a href="https://github.com/goney034/ByeByeRKN"><img src="https://img.shields.io/github/languages/code-size/goney034/ByeByeRKN?color=blue" alt="code size"></a>
 </p>
 
 [متن اصلی (روسی): README.md](README.md)
 
-> **توجه:** این مخزن یک نسخه‌ی تغییریافته (فورک) از پروژه‌ی [alexus282/ByeByeRKN](https://github.com/alexus282/ByeByeRKN) است و نسخه‌ی رسمی نیست. تغییرات: افزودن زبان فارسی به رابط برنامه (`values-fa`) و نام شهرهای خروجی به فارسی، ترجمه‌ی README، و workflow ساخت و انتشار APK. کد برنامه جز همین موارد با پروژه‌ی اصلی یکی است. مجوز اصلی (Apache-2.0) حفظ شده است. نسخه‌ی رسمی را می‌توانید از مخزن اصلی بگیرید.
+> **توجه:** این مخزن یک نسخه‌ی تغییریافته (فورک) از پروژه‌ی [alexus282/ByeByeRKN](https://github.com/alexus282/ByeByeRKN) است و نسخه‌ی رسمی نیست. تغییرات این فورک: رابط فارسی (`values-fa`) و نام شهرهای خروجی به فارسی، انتخاب زبان داخل برنامه، حالت شب و روز، نمایش مقدار دانلود و آپلود در اعلان، اتصال خودکار VPN برای برنامه‌های انتخابی، صفحه‌ی لاگ مخفی، نسخه‌ی آزمایشی ویندوز، حذف افزودن سرویس‌های روسی، ترجمه‌ی README و workflow ساخت و انتشار. این فورک هر روز خودکار با پروژه‌ی اصلی هم‌گام می‌شود. مجوز اصلی (Apache-2.0) حفظ شده است. نسخه‌ی رسمی را می‌توانید از مخزن اصلی بگیرید.
 
 یک کلاینت اندروید برای Cloudflare WARP بر پایه‌ی پروتکل AmneziaWG و MASQUE. همه‌چیز با یک دکمه کار می‌کند: برنامه خودش در WARP ثبت‌نام می‌کند، سرور و پارامترهای اتصال را انتخاب می‌کند و در صورت خرابی یا تغییر شبکه بدون دخالت کاربر دوباره وصل می‌شود.
 
-**وضعیت: بتا (نسخه‌ی ۰٫۲٫۰).** روی Galaxy S24 با اندروید ۱۶ آزمایش شده است. حداقل نسخه‌ی اندروید: ۸٫۰.
+**وضعیت: بتا (نسخه‌ی ۰٫۲٫۳ این فورک).** روی Galaxy S24 با اندروید ۱۶ آزمایش شده است. حداقل نسخه‌ی اندروید: ۸٫۰.
 
 <p align="center">
   <img src="art/screenshot-home-fa.webp" width="280" alt="صفحه‌ی اصلی برنامه">
@@ -39,16 +39,21 @@
 - کلید WARP+ در صورت داشتن. بدون کلید همه‌چیز روی WARP رایگان کار می‌کند.
 - فهرست آدرس‌های WARP و سایت‌های پنهان‌سازی بدون انتشار نسخه‌ی جدید به‌روز می‌شود (پایین‌تر را ببینید).
 - اشتراک‌گذاری VPN با لپ‌تاپ یا تلویزیون: روی هات‌اسپات، تدرینگ USB یا بلوتوث گوشی یک پروکسی HTTP و SOCKS5 کار می‌کند، تا وقتی VPN متصل است. فقط TCP از آن عبور می‌کند.
+- حالت شب و روز: دکمه‌ی خورشید/ماه در گوشه‌ی صفحه‌ی اصلی. انتخاب شما ذخیره می‌شود. (قابلیت این فورک)
+- اعلان VPN مقدار دانلود و آپلود را هم نشان می‌دهد. (قابلیت این فورک)
+- اتصال خودکار برای برنامه‌های انتخابی: با باز شدن برنامه VPN روشن و با خروج از آن خاموش می‌شود (تنظیمات ← اتصال خودکار؛ به دسترسی «Usage access» نیاز دارد). (قابلیت این فورک)
+- صفحه‌ی لاگ مخفی: در «درباره» هفت بار روی نسخه بزنید تا روشن یا خاموش شود. (قابلیت این فورک)
+- نسخه‌ی آزمایشی ویندوز: در صفحه‌ی Releases، فایل `ByeByeRKN-Windows.zip`. (قابلیت این فورک)
 - Android TV: آیکون در لانچر تلویزیون، کنترل با ریموت و چیدمان صفحه‌ی عریض.
 
 ## نصب
 
-فایل APK را از صفحه‌ی [آخرین نسخه](https://github.com/alexus282/ByeByeRKN/releases/latest) دانلود و نصب کنید. برای دریافت خودکار به‌روزرسانی‌ها، آدرس این مخزن را به [Obtainium](https://github.com/ImranR98/Obtainium) اضافه کنید.
+فایل APK را از صفحه‌ی [آخرین نسخه](https://github.com/goney034/ByeByeRKN/releases/latest) دانلود و نصب کنید. برای دریافت خودکار به‌روزرسانی‌ها، آدرس این مخزن را به [Obtainium](https://github.com/ImranR98/Obtainium) اضافه کنید.
 
-اصالت APK را می‌توان با اثر انگشت گواهی امضا بررسی کرد (`apksigner verify --print-certs`):
+این فورک با کلید خودش امضا می‌شود (نه کلید پروژه‌ی اصلی). اصالت APK را می‌توان با اثر انگشت گواهی امضا بررسی کرد (`apksigner verify --print-certs`):
 
 ```text
-SHA-256: 5420f6aa3f30ada56368925223eb26e65be4393e088c4178dd183e4ccfd140da
+SHA-256: ba3c41aa18c9126dd655d58eb531c518897c96b891fba880149c9576a7eea73c
 ```
 
 ## محدودیت‌ها
