@@ -113,6 +113,8 @@ jobs:
 
           SHA-256: \`$SHA\`
           EOF
+          # Running the workflow again for the same tag replaces that release (and its tag).
+          gh release delete "$TAG" --yes --cleanup-tag 2> /dev/null || true
           gh release create "$TAG" \
             "ByeByeRKN-fa-${TAG}.apk" \
             "ByeByeRKN-fa-${TAG}.apk.sha256" \
