@@ -6,12 +6,11 @@ Builds from that one picture:
   - the Android TV banner (drawable-xhdpi/tv_banner.png),
   - the README picture (art/readme.webp),
   - monochrome vectors: drawable/ic_tile.xml (notification and quick-settings tile) and
-    drawable/ic_launcher_monochrome.xml (themed icons of Android 13+), traced from the bird and
-    drawn as an arc for the ring.
+    drawable/ic_launcher_monochrome.xml (themed icons of Android 13+), traced from
+    art/icon-fork-mono.webp.
 
 Run from the project root: python art/make_icon_fork.py [font.ttf]
 """
-import math
 import sys
 from pathlib import Path
 
@@ -21,13 +20,9 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 RES = Path("app/src/main/res")
 SOURCE = Path("art/icon-fork-source.webp")
+MONO_SOURCE = Path("art/icon-fork-mono.webp")  # the same icon in one colour on a transparent background
 # The ring in the source, measured from its pixels: centre and outer radius.
 CX, CY, R_OUT = 627.0, 583.0, 408.0
-RING_WIDTH = 53.0
-R_MID = R_OUT - RING_WIDTH / 2
-# Ends of the gap, as points of the ring's centre line.
-GAP_START = (543.0, 257.0)  # left of the gap
-GAP_END = (872.0, 319.0)  # right of the gap
 BACKGROUND = (1, 8, 17)  # #010811, the picture's own dark navy
 DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
 CANVAS_DP, RING_DP = 108, 62  # launchers show the central 72dp; the ring sits inside it
@@ -69,41 +64,31 @@ def ring_picture(art: Image.Image, size: int) -> Image.Image:
     return circle_cutout(art.crop(box).resize((size, size), Image.LANCZOS))
 
 
-def bird_path(art: Image.Image, scale: float, ox: float, oy: float) -> str:
-    """Outline of the white bird as a path; (x - CX) * scale + ox maps a source pixel into the vector."""
-    mask = (np.array(art).min(axis=2) > 200).astype(np.uint8) * 255
+def trace(path: Path, ring_diameter: float, size: int) -> str:
+    """Outlines of the ring and the bird in the one-colour picture, as vector path data.
+
+    The picture's ring has its outer edge at x 125..1128 and bottom y 1154, so its centre is
+    (626.5, 652.5) and its outer diameter 1003 pixels; that is scaled to ring_diameter.
+    """
+    cx, cy, diameter = 626.5, 652.5, 1003.0
+    mask = (np.array(Image.open(path).convert("RGBA"))[:, :, 3] > 128).astype(np.uint8) * 255
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    contour = max(contours, key=cv2.contourArea)
-    points = cv2.approxPolyDP(contour, 1.1, True)[:, 0, :]
-    parts = [f"{(x - CX) * scale + ox:.2f},{(y - CY) * scale + oy:.2f}" for x, y in points]
-    return "M" + " L".join(parts) + " Z"
+    scale, origin = ring_diameter / diameter, size / 2
+    parts = []
+    for contour in sorted(contours, key=cv2.contourArea, reverse=True)[:2]:
+        points = cv2.approxPolyDP(contour, 1.0, True)[:, 0, :]
+        parts.append("M" + " L".join(f"{(x - cx) * scale + origin:.2f},{(y - cy) * scale + origin:.2f}" for x, y in points) + " Z")
+    return " ".join(parts)
 
 
-def ring_path(scale: float, ox: float, oy: float) -> str:
-    def point(p):
-        dx, dy = p[0] - CX, p[1] - CY
-        k = R_MID / math.hypot(dx, dy)
-        return (dx * k * scale + ox, dy * k * scale + oy)
-
-    (x1, y1), (x2, y2) = point(GAP_START), point(GAP_END)
-    r = R_MID * scale
-    # From the left end down around to the right end: the long way, counter-clockwise on screen.
-    return f"M{x1:.2f},{y1:.2f} A{r:.2f},{r:.2f} 0 1 0 {x2:.2f},{y2:.2f}"
-
-
-def vector(size: int, ring_diameter: float, art: Image.Image) -> str:
-    scale = ring_diameter / (2 * R_OUT)
-    c = size / 2
+def vector(size: int, ring_diameter: float) -> str:
     return (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
         f'    android:width="{size}dp"\n    android:height="{size}dp"\n'
         f'    android:viewportWidth="{size}"\n    android:viewportHeight="{size}">\n'
-        '    <path\n        android:strokeColor="#FFFFFFFF"\n'
-        f'        android:strokeWidth="{RING_WIDTH * scale:.2f}"\n'
-        f'        android:pathData="{ring_path(scale, c, c)}" />\n'
         '    <path\n        android:fillColor="#FFFFFFFF"\n'
-        f'        android:pathData="{bird_path(art, scale, c, c)}" />\n'
+        f'        android:pathData="{trace(MONO_SOURCE, ring_diameter, size)}" />\n'
         '</vector>\n'
     )
 
@@ -136,8 +121,8 @@ def main() -> None:
     save(banner(art, font), RES / "drawable-xhdpi" / "tv_banner.png")
     save(art.resize((512, 512), Image.LANCZOS), Path("art/readme.webp"), quality=92, method=6)
 
-    (RES / "drawable" / "ic_tile.xml").write_text(vector(24, 22, art), encoding="utf-8")
-    (RES / "drawable" / "ic_launcher_monochrome.xml").write_text(vector(108, RING_DP, art), encoding="utf-8")
+    (RES / "drawable" / "ic_tile.xml").write_text(vector(24, 22), encoding="utf-8")
+    (RES / "drawable" / "ic_launcher_monochrome.xml").write_text(vector(108, 58), encoding="utf-8")
     print("vectors written")
 
 
