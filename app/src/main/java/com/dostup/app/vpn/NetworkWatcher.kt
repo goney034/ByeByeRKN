@@ -63,6 +63,9 @@ class NetworkWatcher(private val context: Context, private val onChange: (kind: 
             .onFailure { Log.w(TAG, "cannot watch networks", it) }
     }
 
+    /** The physical network in use, for lookups that must not go into the tunnel. */
+    val current: Network? get() = primary.current
+
     val isCellular: Boolean
         get() = synchronized(networks) { networks[primary.current]?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true }
 

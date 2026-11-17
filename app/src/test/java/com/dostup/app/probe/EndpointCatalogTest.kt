@@ -13,6 +13,7 @@ import java.security.KeyPairGenerator
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 import java.util.Base64
+import kotlin.random.Random
 
 class EndpointCatalogTest {
     @After
@@ -34,7 +35,7 @@ class EndpointCatalogTest {
         assertTrue("catalog/warp.json.sig does not match; run catalog/sign.sh", EndpointCatalog.verify(json, signature))
         val catalog = EndpointCatalog.fromJson(String(json))
         assertNotNull(catalog)
-        // Version 1 is the built-in list; a newer file may differ, an equal version must not.
+        // The file and the built-in list are released together; a newer file may differ, an equal version must not.
         if (catalog!!.version == EndpointCatalog.BUILT_IN.version) assertEquals(EndpointCatalog.BUILT_IN, catalog)
         assertTrue(catalog.version >= EndpointCatalog.BUILT_IN.version)
     }
@@ -81,9 +82,37 @@ class EndpointCatalogTest {
 
     @Test
     fun aTinyCatalogStillGivesASample() {
-        EndpointCatalog.current = EndpointCatalog(2, listOf(2408), listOf("162.159.192."), emptyList(), emptyList(), listOf("ya.ru"))
-        val sample = WarpEndpoints.sample(32)
-        assertEquals(10, sample.size) // every distinct endpoint there is, and no endless loop
+        EndpointCatalog.current = EndpointCatalog(99, listOf(2408), listOf("162.159.192."), emptyList(), emptyList(), listOf("ya.ru"))
+        val sample = WarpEndpoints.sample(300, Random(1))
+        assertEquals(254, sample.size) // every distinct endpoint there is, and no endless loop
         assertTrue(sample.all { it.startsWith("162.159.192.") })
+    }
+
+    @Test
+    fun samplesTheWholeFamilyNotJustItsFirstTenHosts() {
+        val hosts = WarpEndpoints.sample(200, Random(7))
+            .filterNot { it.startsWith("[") }
+            .map { it.substringBefore(':').substringAfterLast('.').toInt() }
+        assertTrue(hosts.all { it in 1..254 })
+        assertTrue("only low hosts: ${hosts.max()}", hosts.max() > 200)
+    }
+
+    @Test
+    fun namesAreLeftOutOfScansAndTheZeroTrustRangeIsGone() {
+        assertFalse(EndpointCatalog.BUILT_IN.prefixes.contains("162.159.193."))
+        // A catalog made for older versions may still carry a name: it must not reach a scan.
+        EndpointCatalog.current = EndpointCatalog.BUILT_IN.copy(version = 99, wellKnown = listOf("engage.cloudflareclient.com:2408", "162.159.192.1:2408"))
+        val sample = WarpEndpoints.sample(32)
+        assertTrue(sample.none { it.startsWith("engage") })
+        assertTrue("162.159.192.1:2408" in sample)
+    }
+
+    @Test
+    fun tellsAddressesFromNames() {
+        assertTrue(WarpEndpoints.isLiteral("162.159.192.1"))
+        assertTrue(WarpEndpoints.isLiteral(WarpEndpoints.hostOf("[2606:4700:d0::a29f:c001]:2408")))
+        assertFalse(WarpEndpoints.isLiteral("engage.cloudflareclient.com"))
+        assertFalse(WarpEndpoints.isLiteral(""))
+        assertEquals(2408, WarpEndpoints.portOf("[2606:4700:d0::a29f:c001]:2408"))
     }
 }

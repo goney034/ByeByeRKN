@@ -15,7 +15,7 @@ import java.util.Base64
 data class EndpointCatalog(
     val version: Int,
     val ports: List<Int>,
-    /** IPv4 families such as "162.159.192.", completed with 1..10. */
+    /** IPv4 families such as "162.159.192.", completed with a host number. */
     val prefixes: List<String>,
     /** IPv6 families: the IPv4 endpoint embedded in the last bits, completed with two hex digits. */
     val v6Prefixes: List<String>,
@@ -35,7 +35,7 @@ data class EndpointCatalog(
 
     companion object {
         val BUILT_IN = EndpointCatalog(
-            version = 1,
+            version = 2,
             ports = listOf(
                 500, 854, 859, 864, 878, 880, 890, 891, 894, 903, 908, 928, 934, 939, 942, 943, 945, 946,
                 955, 968, 987, 988, 1002, 1010, 1014, 1018, 1070, 1074, 1180, 1387, 1701, 1843, 2371, 2408,
@@ -43,14 +43,16 @@ data class EndpointCatalog(
                 7559, 8319, 8742, 8854, 8886,
             ),
             prefixes = listOf(
-                "162.159.192.", "162.159.193.", "162.159.195.",
+                // 162.159.193.x is the Zero Trust range: it never answers a consumer handshake.
+                "162.159.192.", "162.159.195.",
                 "188.114.96.", "188.114.97.", "188.114.98.", "188.114.99.",
                 "8.6.112.", "8.34.70.", "8.34.146.", "8.35.211.", "8.39.125.", "8.39.204.", "8.39.214.", "8.47.69.",
             ),
             v6Prefixes = listOf("2606:4700:d0::a29f:c0", "2606:4700:d1::a29f:c0", "2606:4700:d0::a29f:c3", "2606:4700:d1::a29f:c3"),
+            // Addresses only: a name needs DNS, and a scan must not wait for that.
             wellKnown = listOf(
-                "162.159.192.1:2408", "162.159.195.1:500", "188.114.97.1:4500", "162.159.193.10:1701",
-                "engage.cloudflareclient.com:2408", "[2606:4700:d0::a29f:c001]:2408",
+                "162.159.192.1:2408", "162.159.195.1:500", "188.114.97.1:4500", "162.159.192.5:1701",
+                "[2606:4700:d0::a29f:c001]:2408",
             ),
             quicSni = listOf(
                 "yandex.ru", "ya.ru", "vk.com", "ozon.ru", "mail.ru", "rutube.ru",

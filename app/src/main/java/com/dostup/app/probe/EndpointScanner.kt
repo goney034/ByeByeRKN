@@ -33,7 +33,8 @@ object WarpEndpoints {
      */
     fun sample(count: Int, random: Random = Random.Default): List<String> {
         val catalog = EndpointCatalog.current
-        val result = LinkedHashSet(wellKnown)
+        // Names would need DNS, which a scan must not wait for; the catalog may still carry one.
+        val result = LinkedHashSet(wellKnown.filter { isLiteral(hostOf(it)) })
         val families = prefixes.shuffled(random)
         var next = 0
         // A small downloaded catalog may hold fewer distinct endpoints than asked for.
@@ -41,15 +42,22 @@ object WarpEndpoints {
         while (result.size < count && draws++ < count * MAX_DRAWS_PER_ENDPOINT) {
             val port = ports.random(random)
             result += if (catalog.v6Prefixes.isNotEmpty() && random.nextInt(5) == 0) {
-                "[${v6Prefixes.random(random)}%02x]:$port".format(random.nextInt(1, 11))
+                "[${v6Prefixes.random(random)}%02x]:$port".format(random.nextInt(FIRST_HOST, LAST_HOST + 1))
             } else {
-                "${families[next++ % families.size]}${random.nextInt(1, 11)}:$port"
+                "${families[next++ % families.size]}${random.nextInt(FIRST_HOST, LAST_HOST + 1)}:$port"
             }
         }
         return result.toList()
     }
 
     const val V6_FAMILY = "v6"
+
+    /**
+     * Every address of a family's /24 is an endpoint (measured: 10 of 10 random hosts in each
+     * family answered). The first ten are what every public config generator hands out.
+     */
+    private const val FIRST_HOST = 1
+    private const val LAST_HOST = 254
     private const val MAX_DRAWS_PER_ENDPOINT = 20
 
     /** Routes in one family tend to share an exit, so results are judged per family. */
@@ -59,11 +67,20 @@ object WarpEndpoints {
         else -> endpoint.substringBeforeLast(':').substringBeforeLast('.') + "."
     }
 
-    fun resolve(endpoint: String): InetSocketAddress {
+    fun hostOf(endpoint: String): String {
         val separator = endpoint.lastIndexOf(':')
         require(separator > 0) { "endpoint must be host:port" }
-        val host = endpoint.substring(0, separator).removePrefix("[").removeSuffix("]")
-        val port = endpoint.substring(separator + 1).toInt()
+        return endpoint.substring(0, separator).removePrefix("[").removeSuffix("]")
+    }
+
+    fun portOf(endpoint: String): Int = endpoint.substring(endpoint.lastIndexOf(':') + 1).toInt()
+
+    /** An IPv4 or IPv6 address rather than a name: resolving it never touches DNS. */
+    fun isLiteral(host: String): Boolean = ':' in host || (host.isNotEmpty() && host.all { it.isDigit() || it == '.' })
+
+    fun resolve(endpoint: String): InetSocketAddress {
+        val host = hostOf(endpoint)
+        val port = portOf(endpoint)
         return try {
             InetSocketAddress(InetAddress.getByName(host), port)
         } catch (_: Exception) {
@@ -72,7 +89,11 @@ object WarpEndpoints {
     }
 }
 
-class EndpointScanner(private val probe: HandshakeProbe) {
+class EndpointScanner(
+    private val probe: HandshakeProbe,
+    /** Turns "host:port" into an address; the app passes one that looks names up outside the tunnel. */
+    private val resolve: (String) -> InetSocketAddress = WarpEndpoints::resolve,
+) {
     class Hit(val endpoint: String, val params: AwgParams, val rttMs: Long)
 
     /** Probes every endpoint with every obfuscation variant and returns those that answered, fastest first. */
@@ -94,7 +115,7 @@ class EndpointScanner(private val probe: HandshakeProbe) {
             for ((endpoint, params) in routes) {
                 launch(Dispatchers.IO) {
                     semaphore.withPermit {
-                        val rtt = runCatching { probe.probe(WarpEndpoints.resolve(endpoint), params, TIMEOUT_MS) }.getOrNull()
+                        val rtt = runCatching { probe.probe(resolve(endpoint), params, TIMEOUT_MS) }.getOrNull()
                         if (rtt != null) hits += Hit(endpoint, params, rtt)
                         onProgress(done.incrementAndGet(), routes.size, hits.size)
                     }

@@ -172,6 +172,8 @@ Java-часть `tunnel` из [amneziawg-android](https://github.com/amnezia-vpn
 - `GoBackend`: добавлены `protectSocket`, `closeTunnelKeepService`, `stopIdleService` и работа службы в foreground;
 - `GoBackend`: `establishForeignTunnel`, `releaseForeignTunnel` и `protectFd` отдают интерфейс VPN ядру MASQUE, а
   настройка интерфейса вынесена в `configureBuilder`, чтобы оба ядра получали одинаковый;
+- `GoBackend.setState`: если новый конфиг не поднялся, прежний не возвращается: для приложения это маршрут, от
+  которого только что отказались;
 - манифест: тип foreground-службы `specialUse` и нужные для него разрешения.
 
 Изменённые места в `GoBackend.java` отмечены комментариями `Dostup:`.

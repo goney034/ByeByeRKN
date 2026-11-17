@@ -1,5 +1,6 @@
 package com.dostup.app.vpn
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
@@ -87,6 +88,7 @@ class VpnController(private val context: Context, private val store: Store) {
     private val api = WarpApi()
     // No connection reuse: after a tunnel swap an old connection may point at another data centre.
     private val traceClient = OkHttpClient.Builder()
+        .connectTimeout(TRACE_CONNECT_TIMEOUT_S, TimeUnit.SECONDS)
         .callTimeout(TRACE_TIMEOUT_S, TimeUnit.SECONDS)
         .connectionPool(ConnectionPool(0, 1, TimeUnit.SECONDS))
         .build()
@@ -105,6 +107,9 @@ class VpnController(private val context: Context, private val store: Store) {
     private var retryJob: Job? = null
     private var retryDelayS = FIRST_RETRY_S
     private var tunnelUp = false
+    /** The tunnel that is up passed the traffic check; false for one that only exists. */
+    @Volatile private var tunnelCarries = false
+    private var establishFailures = 0
     /** The route currently carrying traffic, so a failover can skip it. */
     private var current: Candidate? = null
     /** Set instead of [current] while the MASQUE core carries traffic. */
@@ -125,6 +130,7 @@ class VpnController(private val context: Context, private val store: Store) {
         override fun onStateChange(newState: Tunnel.State) {
             if (newState == Tunnel.State.DOWN) {
                 tunnelUp = false
+                tunnelCarries = false
                 // The VpnService went away under the MASQUE core: nothing is left for it to carry.
                 if (masqueUp) scope.launch { stopMasque() }
                 // Revoked by the system or replaced by another VPN app: don't fight over it.
@@ -373,9 +379,9 @@ class VpnController(private val context: Context, private val store: Store) {
 
         suspend fun run(): Boolean {
             Log.i(TAG, "searching on network $networkKey, avoiding ${failed?.endpoint}")
-            val protect = prepareProbeSockets()
+            val protect = probeProtection()
             val probe = HandshakeProbe(Key.fromBase64(account.privateKey).bytes, Key.fromBase64(account.peerPublicKey).bytes, protect)
-            val scanner = EndpointScanner(probe)
+            val scanner = EndpointScanner(probe, ::resolveOutsideTunnel)
 
             // A probe tells in a moment which remembered routes still answer, without touching the tunnel.
             val remembered = book.knownGood(now()).filter { it.matches(settings) && !it.sameRoute(failed) }
@@ -561,12 +567,22 @@ class VpnController(private val context: Context, private val store: Store) {
         }
     }
 
-    /** The last trace is fresh here, since a traffic check has just passed on this route. */
+    /**
+     * The last trace is fresh here, since a traffic check has just passed on this route.
+     *
+     * Telegram gets a second try: a session that has just come up can lose the first answers from
+     * outside Cloudflare while Cloudflare's own trace already replies. Measured 4 s after a
+     * reconnect, where one failed check sent the search through eight other routes and back to
+     * this one, which was fine by then.
+     */
     private suspend fun routeIsGood(): Boolean {
         val exit = _exit.value ?: return false
         if (exit.inRussia) return false
         val network = awaitVpnNetwork() ?: return false
-        return TelegramProbe.answers(network.socketFactory)
+        if (TelegramProbe.answers(network.socketFactory)) return true
+        delay(TELEGRAM_RECHECK_MS)
+        val again = awaitVpnNetwork() ?: return false
+        return TelegramProbe.answers(again.socketFactory)
     }
 
     private fun reregister(): Boolean {
@@ -574,6 +590,7 @@ class VpnController(private val context: Context, private val store: Store) {
         if (now - store.lastRegisterAt < REREGISTER_EVERY_MS) return false
         store.lastRegisterAt = now
         _status.value = VpnStatus.Working(text(R.string.st_reregistering))
+        closeDeadTunnel()
         return runCatching { api.register() }
             .onSuccess {
                 Log.i(TAG, "registered a new WARP account")
@@ -670,13 +687,41 @@ class VpnController(private val context: Context, private val store: Store) {
         }
     }
 
-    /** Returns how probe sockets get out of the tunnel; closes the tunnel if they can't. */
-    private suspend fun prepareProbeSockets(): (DatagramSocket) -> Unit {
-        if (!tunnelUp) return {}
-        val canProtect = runCatching { DatagramSocket().use { GoBackend.protectSocket(it) } }.getOrDefault(false)
-        if (canProtect) return { GoBackend.protectSocket(it) }
-        bringDown(keepService = true)
-        return {}
+    /**
+     * How probe sockets get out of the tunnel; closes the tunnel if they can't. Every probe is
+     * protected, whatever the state at the start: a search brings tunnels up as it goes, and a
+     * probe sent into one that carries nothing says "no server answers" about a healthy network.
+     * Without a VpnService there is nothing to get around and protecting does nothing.
+     */
+    private suspend fun probeProtection(): (DatagramSocket) -> Unit {
+        if (tunnelUp && !runCatching { DatagramSocket().use { GoBackend.protectSocket(it) } }.getOrDefault(false)) {
+            bringDown(keepService = true)
+        }
+        return { GoBackend.protectSocket(it) }
+    }
+
+    /**
+     * Endpoint names (a manual endpoint can be one) are looked up on the physical network: the
+     * system resolver may sit behind a tunnel that carries nothing, and waits half a minute there.
+     */
+    private fun resolveOutsideTunnel(endpoint: String): InetSocketAddress {
+        val host = WarpEndpoints.hostOf(endpoint)
+        if (WarpEndpoints.isLiteral(host)) return WarpEndpoints.resolve(endpoint)
+        val address = runCatching { networks.current?.getByName(host) }.getOrNull() ?: return WarpEndpoints.resolve(endpoint)
+        return InetSocketAddress(address, WarpEndpoints.portOf(endpoint))
+    }
+
+    /**
+     * A tunnel that carries nothing still swallows the app's own requests, so it goes before any
+     * call to the API. A working one stays: through it the API is out of the provider's reach.
+     */
+    private fun closeDeadTunnel() {
+        if (!tunnelUp || tunnelCarries) return
+        stopMasque()
+        synchronized(backendLock) {
+            runCatching { backend.closeTunnelKeepService(tunnel) }
+            tunnelUp = false
+        }
     }
 
     private enum class Outcome { OK, HANDSHAKE_ONLY, NO_HANDSHAKE }
@@ -687,24 +732,19 @@ class VpnController(private val context: Context, private val store: Store) {
     private suspend fun tryConfig(text: String, verify: Boolean): Outcome {
         val config = Config.parse(BufferedReader(StringReader(text)))
         stopMasque()
+        tunnelCarries = false
         val started = System.currentTimeMillis()
-        // Rapid swaps can hit "Cannot set address" while Android still tears down the old interface.
-        for (attempt in 1..ESTABLISH_TRIES) {
-            try {
-                synchronized(backendLock) {
-                    backend.setState(tunnel, Tunnel.State.UP, config)
-                    tunnelUp = true
-                }
-                break
-            } catch (e: BackendException) {
-                throw e
-            } catch (e: Exception) {
-                if (attempt == ESTABLISH_TRIES) throw e
-                Log.w(TAG, "establish failed (${e.message}), retrying")
-                delay(ESTABLISH_RETRY_MS)
+        val established = establish {
+            synchronized(backendLock) {
+                backend.setState(tunnel, Tunnel.State.UP, config)
+                tunnelUp = true
             }
         }
         val up = System.currentTimeMillis()
+        if (!established) {
+            lastStages = "the VPN interface did not come up in ${up - started} ms"
+            return Outcome.NO_HANDSHAKE
+        }
         val handshake = waitForHandshake()
         val shaken = System.currentTimeMillis()
         lastStages = "up ${up - started} ms, handshake " + if (handshake) "${shaken - up} ms" else "none in ${shaken - up} ms"
@@ -712,8 +752,40 @@ class VpnController(private val context: Context, private val store: Store) {
         if (!verify) return Outcome.OK
         val flows = trafficGoesThroughWarp()
         lastStages += ", trace ${System.currentTimeMillis() - shaken} ms"
+        tunnelCarries = flows
         return if (flows) Outcome.OK else Outcome.HANDSHAKE_ONLY
     }
+
+    /**
+     * Brings a VPN interface up with [block]. Rapid swaps can hit "Cannot set address" while
+     * Android still tears down the old interface, for seconds at times, so this waits longer on
+     * every try. False means it never came up and the search should move on to another route; a
+     * second failure in a row is not about the route and stops the search.
+     */
+    private suspend fun establish(block: () -> Unit): Boolean {
+        var last: Exception? = null
+        for (attempt in 1..ESTABLISH_TRIES) {
+            try {
+                block()
+                establishFailures = 0
+                return true
+            } catch (e: BackendException) {
+                throw e
+            } catch (e: Exception) {
+                if (e.refusesBackgroundStart()) throw e
+                last = e
+                Log.w(TAG, "establish failed (${e.message}), try $attempt of $ESTABLISH_TRIES")
+                if (attempt < ESTABLISH_TRIES) delay(ESTABLISH_RETRY_MS * attempt)
+            }
+        }
+        if (++establishFailures >= MAX_ESTABLISH_FAILURES) throw last ?: IllegalStateException("VPN interface did not come up")
+        return false
+    }
+
+    /** Android won't start a service for an app in the background; only the user can go on from there. */
+    private fun Exception.refusesBackgroundStart(): Boolean =
+        (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && this is ForegroundServiceStartNotAllowedException) ||
+            (this is IllegalStateException && message?.contains("Not allowed to start service") == true)
 
     /**
      * Hands the VPN interface to the MASQUE core and waits until it reaches Cloudflare. The core's
@@ -730,8 +802,9 @@ class VpnController(private val context: Context, private val store: Store) {
             BufferedReader(StringReader(WarpConfig.renderInterface(account.addressV4, account.addressV6, settings.dns.servers, split, MASQUE_MTU))),
         )
         stopMasque()
+        tunnelCarries = false
         val started = System.currentTimeMillis()
-        for (attempt in 1..ESTABLISH_TRIES) {
+        val established = establish {
             try {
                 val tun = synchronized(backendLock) {
                     backend.establishForeignTunnel(tunnel, config).also {
@@ -742,17 +815,16 @@ class VpnController(private val context: Context, private val store: Store) {
                 runningMasque = route
                 val sni = settings.quicSni.ifBlank { QuicMask.randomSni() }
                 if (endpoint != null) masque.start(tun, account, route, sni, MASQUE_MTU, endpoint) else masque.start(tun, account, route, sni, MASQUE_MTU)
-                break
-            } catch (e: BackendException) {
-                throw e
             } catch (e: Exception) {
                 stopMasque()
-                if (attempt == ESTABLISH_TRIES) throw e
-                Log.w(TAG, "MASQUE start failed (${e.message}), retrying")
-                delay(ESTABLISH_RETRY_MS)
+                throw e
             }
         }
         val up = System.currentTimeMillis()
+        if (!established) {
+            lastStages = "the VPN interface did not come up in ${up - started} ms"
+            return Outcome.NO_HANDSHAKE
+        }
         val connected = masque.awaitConnected(MASQUE_CONNECT_TIMEOUT_MS)
         val joined = System.currentTimeMillis()
         lastStages = "up ${up - started} ms, connect " +
@@ -760,6 +832,7 @@ class VpnController(private val context: Context, private val store: Store) {
         if (!connected) return Outcome.NO_HANDSHAKE
         val flows = trafficGoesThroughWarp()
         lastStages += ", trace ${System.currentTimeMillis() - joined} ms"
+        tunnelCarries = flows
         return if (flows) Outcome.OK else Outcome.HANDSHAKE_ONLY
     }
 
@@ -782,6 +855,7 @@ class VpnController(private val context: Context, private val store: Store) {
         if (now - store.masqueRegisterTriedAt < MASQUE_REGISTER_EVERY_MS) return null
         store.masqueRegisterTriedAt = now
         _status.value = VpnStatus.Working(text(R.string.st_registering_masque))
+        closeDeadTunnel()
         return runCatching { api.registerMasque() }
             .onSuccess { account ->
                 Log.i(TAG, "registered a MASQUE device")
@@ -819,6 +893,9 @@ class VpnController(private val context: Context, private val store: Store) {
      * Asks Cloudflare where our traffic leaves, over sockets bound to the VPN network. Unbound
      * sockets can slip out through the physical network while Android switches tunnels, which
      * reads as warp=off with our real address; that case gets one more try.
+     *
+     * The request goes to an address, not a name: a lookup through a tunnel that carries nothing
+     * cannot be interrupted and held this check for 19 s instead of the timeout.
      */
     private suspend fun currentExit(): ExitInfo? {
         var info: ExitInfo? = null
@@ -835,13 +912,8 @@ class VpnController(private val context: Context, private val store: Store) {
     }
 
     private fun traceVia(network: Network): ExitInfo? = runCatching {
-        val client = traceClient.newBuilder()
-            .socketFactory(network.socketFactory)
-            .dns(object : Dns {
-                override fun lookup(hostname: String) = network.getAllByName(hostname).toList()
-            })
-            .build()
-        val request = Request.Builder().url("https://www.cloudflare.com/cdn-cgi/trace").build()
+        val client = traceClient.newBuilder().socketFactory(network.socketFactory).build()
+        val request = Request.Builder().url(TRACE_URL).build()
         client.newCall(request).execute().use { response ->
             if (response.isSuccessful) ExitInfo.parse(response.body?.string().orEmpty()) else null
         }
@@ -1045,6 +1117,7 @@ class VpnController(private val context: Context, private val store: Store) {
                 }
             }
             tunnelUp = false
+            tunnelCarries = false
             up
         }
         // Give a stopped VpnService time to be destroyed before anything brings it up again.
@@ -1096,20 +1169,26 @@ class VpnController(private val context: Context, private val store: Store) {
         const val BLIND_ATTEMPTS = 3
         const val MASKS_WITH_FALLBACK = 3
         /** How many candidates may spend time on MTU fallback before we move on. */
-        const val MTU_RETRY_CANDIDATES = 2
+        const val MTU_RETRY_CANDIDATES = 1
         const val HANDSHAKE_TIMEOUT_MS = 6_000L
+        const val TELEGRAM_RECHECK_MS = 1_500L
         /** MASQUE's own packets carry the tunnel, and WARP clients use 1280 over it. */
         const val MASQUE_MTU = 1280
         /** QUIC and TLS on a slow mobile link, plus the core's own retry. */
         const val MASQUE_CONNECT_TIMEOUT_MS = 8_000L
         const val MASQUE_REGISTER_EVERY_MS = 6 * 3_600_000L
-        const val TRACE_TIMEOUT_S = 8L
+        /** Cloudflare's resolver answers the same trace as any of its sites, and has a certificate for its address. */
+        const val TRACE_URL = "https://1.1.1.1/cdn-cgi/trace"
+        const val TRACE_CONNECT_TIMEOUT_S = 3L
+        const val TRACE_TIMEOUT_S = 4L
         const val TRACE_TRIES = 2
         const val TRACE_RETRY_MS = 1_000L
         const val FAST_FAILURE_MS = 2_000L
         const val VPN_NETWORK_WAIT_MS = 3_000L
-        const val ESTABLISH_TRIES = 3
+        const val ESTABLISH_TRIES = 5
+        /** Multiplied by the try's number: 0.4, 0.8, 1.2 and 1.6 s. */
         const val ESTABLISH_RETRY_MS = 400L
+        const val MAX_ESTABLISH_FAILURES = 2
         const val SERVICE_SETTLE_MS = 800L
         const val NETWORK_SETTLE_MS = 2_000L
         const val MONITOR_EVERY_S = 5
@@ -1120,7 +1199,8 @@ class VpnController(private val context: Context, private val store: Store) {
         const val MIN_AUTO_SEARCH_GAP_MS = 60_000L
         const val REREGISTER_EVERY_MS = 6 * 3_600_000L
         const val WHITELIST_CHECK_TIMEOUT_MS = 2_500
-        const val FIRST_RETRY_S = 30
+        /** Short: right after a disconnect WARP can refuse a device for some seconds and then work. */
+        const val FIRST_RETRY_S = 5
         const val MAX_RETRY_S = 300
         const val SURVEY_PAUSE_MS = 3_000L
         const val SURVEY_TELEGRAM_TIMEOUT_MS = 3_000

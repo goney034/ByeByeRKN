@@ -350,19 +350,15 @@ public final class GoBackend implements Backend {
         if (state == originalState && tunnel == currentTunnel && config == currentConfig)
             return originalState;
         if (state == State.UP) {
-            final Config originalConfig = currentConfig;
-            final Tunnel originalTunnel = currentTunnel;
             // Dostup: keep the VpnService running while switching configs. Stopping it here
             // races with the next establish(): a late onDestroy() would tear the new tunnel down.
             if (currentTunnel != null)
                 setStateInternal(currentTunnel, null, State.DOWN, false);
-            try {
-                setStateInternal(tunnel, config, state, true);
-            } catch (final Exception e) {
-                if (originalTunnel != null)
-                    setStateInternal(originalTunnel, originalConfig, State.UP, true);
-                throw e;
-            }
+            // Dostup: upstream puts the previous config back when the new one fails to come up.
+            // Here the previous one is a route that was just given up, and bringing it up again
+            // only makes "Cannot set address" (Android still tearing the old interface down) twice
+            // as likely for the retry that follows. The tunnel stays down instead.
+            setStateInternal(tunnel, config, state, true);
         } else if (state == State.DOWN && tunnel == currentTunnel) {
             setStateInternal(tunnel, null, State.DOWN, true);
         }
