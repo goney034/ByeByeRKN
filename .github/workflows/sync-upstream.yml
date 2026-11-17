@@ -50,6 +50,8 @@ jobs:
       - name: Merge upstream
         if: steps.fetch.outputs.new != '0'
         run: |
+          fork_sha=$(git rev-parse HEAD)
+          base_sha=$(git merge-base HEAD upstream/main)
           if ! git merge upstream/main --no-edit -m "Merge upstream ${UPSTREAM}@${{ steps.fetch.outputs.head }}"; then
             conflicts=$(git diff --name-only --diff-filter=U)
             # This fork only changes the version number in build.gradle.kts, and upstream bumps it with
@@ -65,6 +67,11 @@ jobs:
               git merge --abort
               exit 1
             fi
+          fi
+          # The merge takes upstream's (lower) app version; keep the fork's own, or follow upstream's new one.
+          python3 .github/scripts/keep_fork_version.py "$fork_sha" "$base_sha"
+          if ! git diff --quiet; then
+            git commit -qam "Keep the fork's app version after merging upstream"
           fi
 
       - name: Fill missing Persian strings
