@@ -16,10 +16,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.amnezia.awg.backend.GoBackend
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 class DostupApp : Application() {
     // Fork: the language is chosen in the app, not in the phone's settings.
     override fun attachBaseContext(base: Context) {
@@ -69,7 +71,7 @@ class DostupApp : Application() {
         scope.launch {
             // Only the kind of status changes the text, not every step of a search.
             // Fork: the counters are in the notification too, so they change it every second.
-            combine(vpn.status, vpn.exit, vpn.traffic) { status, exit, traffic -> Triple(status::class, exit?.colo, traffic) }
+            combine(vpn.status, vpn.exit, vpn.traffic.sample(3_000)) { status, exit, traffic -> Triple(status::class, exit?.colo, traffic) }
                 .distinctUntilChanged()
                 .collect { (_, _, traffic) -> VpnNotification.update(this@DostupApp, vpn.status.value, vpn.exit.value, store.wantConnected, traffic) }
         }

@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import android.os.Process
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -51,12 +50,23 @@ object DevLog {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY, on).apply()
     }
 
-    /** The last lines this process logged, oldest first. */
+    /** Tags that only repeat what the screen is doing; they would push the useful lines out. */
+    private val NOISE = Regex("""^(View|VRI.*|NotificationManager|InputTransport|HWUI|Choreographer|BLASTBufferQueue.*|Insets.*|Ime.*|InputMethod.*|BBA2|Toast|WindowOnBackDispatcher|SurfaceView.*|ViewRootImpl.*|ViewPostIme.*)$""")
+    private val LINE = Regex("""^\S+ \S+\s+([VDIWEF])/([^(]+)\(""")
+
+    /**
+     * The app's own log, without screen noise, oldest first. An app only sees its own lines in logcat,
+     * and the MASQUE core (a second process of this app) is included.
+     */
     fun read(): String = runCatching {
-        val process = ProcessBuilder("logcat", "-d", "-v", "time", "-t", "2000", "--pid=${Process.myPid()}")
-            .redirectErrorStream(true)
-            .start()
-        process.inputStream.bufferedReader().use { it.readText() }
+        val process = ProcessBuilder("logcat", "-d", "-v", "time", "-t", "20000").redirectErrorStream(true).start()
+        val lines = process.inputStream.bufferedReader().use { reader ->
+            reader.lineSequence().filter { line ->
+                val m = LINE.find(line) ?: return@filter !line.startsWith("-----")
+                !NOISE.matches(m.groupValues[2].trim())
+            }.toList()
+        }
+        lines.takeLast(1500).joinToString("\n")
     }.getOrElse { "logcat: ${it.message}" }
 }
 
