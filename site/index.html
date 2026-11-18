@@ -97,24 +97,11 @@ function render(){
     card.append(el("p",{class:"about",text:app.about[lang]}));
     if(!latest){card.append(el("p",{class:"empty",text:t.none}));root.append(card);continue}
     const apk=latest.assets.find(a=>a.name.endsWith(".apk"));
-    const sha=latest.assets.find(a=>a.name.endsWith(".sha256"));
     const pill=(k,v)=>el("span",{class:"pill"},k+": ",el("b",{text:v}));
     card.append(el("div",{class:"meta"},pill(t.version,latest.tag.replace(/^v/,"")),pill(t.date,day(latest.date)),apk&&pill(t.size,mb(apk.size)),apk&&pill(t.downloads,num(apk.downloads))));
     if(apk)card.append(el("a",{class:"btn",href:apk.url,text:"⬇  "+t.download}));
-    if(app.windows&&app.windows.assets[0]){const w=app.windows.assets[0];card.append(el("a",{class:"btn alt",href:w.url,text:"🪟  "+t.windows+" · "+mb(w.size)}),el("p",{class:"note",text:t.wnote}))}
-    const guide=el("details",{},el("summary",{text:t.guide}),el("ol",{},...t.steps.map(s=>el("li",{text:s}))),el("p",{class:"note",text:t.upd}));
-    card.append(guide);
-    if(sha)card.append(el("details",{},el("summary",{text:t.sha}),el("p",{class:"note"},el("code",{id:"sha-"+app.repo.replace(/\W/g,""),text:"…"}))));
-    if(app.releases.length>1){
-      const list=el("details",{},el("summary",{text:t.older}));
-      for(const r of app.releases.slice(1)){const a=r.assets.find(x=>x.name.endsWith(".apk"));list.append(el("div",{class:"old"},el("span",{text:r.tag+" · "+day(r.date)}),a?el("a",{href:a.url,text:mb(a.size)+" ⬇"}):null))}
-      card.append(list);
-    }
-    card.append(el("p",{class:"note"},el("a",{href:app.repo_url,text:t.source})));
     root.append(card);
-    if(sha)fetch(sha.url).then(r=>r.text()).then(x=>{const c=document.getElementById("sha-"+app.repo.replace(/\W/g,""));if(c)c.textContent=x.trim().split(/\s/)[0]}).catch(()=>{});
   }
-  $("#foot").textContent=data?t.updated+": "+day(data.generated):"";
 }
 $("#theme").onclick=()=>{theme=theme==="dark"?"light":"dark";try{localStorage.theme=theme}catch(e){}render()};
 $("#lang").onclick=()=>{lang=lang==="fa"?"en":"fa";try{localStorage.lang=lang}catch(e){}render()};
