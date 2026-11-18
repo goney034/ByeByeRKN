@@ -1,0 +1,43 @@
+name: Site
+
+# Builds the download page in site/ and publishes it with GitHub Pages.
+# One-time setup: Settings > Pages > Build and deployment > Source: "GitHub Actions".
+# The page is rebuilt when site/ changes, every hour, by hand, and at the end of the Release workflow.
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "art/readme.webp", ".github/workflows/site.yml"]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect the releases
+        run: |
+          cp art/readme.webp site/icon.webp
+          python3 site/build_data.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

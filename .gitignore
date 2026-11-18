@@ -11,3 +11,7 @@ captures/
 build.ps1
 keystore/
 *.pem
+
+# Built by the Site workflow
+site/data.json
+site/icon.webp

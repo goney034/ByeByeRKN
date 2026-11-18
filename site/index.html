@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>دانلود ByeByeRKN</title>
+<meta name="description" content="دانلود مستقیم برنامه‌ها، بدون نیاز به کار با GitHub">
+<link rel="icon" href="icon.webp">
+<style>
+:root{--bg:#06101a;--card:#0d1b29;--card2:#112435;--line:#1c3347;--text:#eef6fb;--sub:#9db2c2;--brand:#00d5fe;--brand-ink:#00222b;--ok:#4ade80}
+:root[data-theme=light]{--bg:#f2f6f9;--card:#fff;--card2:#eef3f7;--line:#d6e0e8;--text:#12202b;--sub:#53677a;--brand:#0090b0;--brand-ink:#fff;--ok:#15803d}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.7 Vazirmatn,"Segoe UI",Tahoma,system-ui,sans-serif}
+a{color:var(--brand)}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 56px}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 0}
+header .tools{display:flex;gap:8px}
+.tool{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:10px;height:40px;min-width:40px;padding:0 12px;font:inherit;font-size:14px;cursor:pointer}
+h1{margin:12px 0 4px;font-size:28px}
+.lead{margin:0 0 24px;color:var(--sub)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:20px}
+.head{display:flex;gap:16px;align-items:center}
+.head img{width:72px;height:72px;border-radius:18px;flex:none;background:#010811}
+.head h2{margin:0;font-size:22px;line-height:1.3}
+.head p{margin:2px 0 0;color:var(--sub);font-size:14px}
+.about{margin:14px 0 0;color:var(--sub);font-size:15px}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.pill{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:2px 12px;font-size:13px;color:var(--sub)}
+.pill b{color:var(--text);font-weight:600}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;border-radius:14px;background:var(--brand);color:var(--brand-ink);font-weight:700;font-size:18px;text-decoration:none;border:0}
+.btn:hover{filter:brightness(1.08)}
+.btn.alt{background:var(--card2);color:var(--text);border:1px solid var(--line);font-size:15px;font-weight:600;min-height:46px;margin-top:10px}
+details{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:600}
+ol,ul{margin:10px 0 0;padding-inline-start:22px;color:var(--sub);font-size:15px}
+li{margin:6px 0}
+code{direction:ltr;unicode-bidi:embed;background:var(--card2);border-radius:6px;padding:1px 6px;font-size:12px;word-break:break-all}
+.old{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.old:last-child{border:0}
+.note{color:var(--sub);font-size:13px;margin-top:10px}
+footer{color:var(--sub);font-size:13px;text-align:center;margin-top:28px}
+.empty{padding:40px 0;text-align:center;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span id="brand" style="font-weight:700"></span>
+    <div class="tools">
+      <button class="tool" id="theme"></button>
+      <button class="tool" id="lang"></button>
+    </div>
+  </header>
+  <h1 id="title"></h1>
+  <p class="lead" id="lead"></p>
+  <main id="apps"></main>
+  <footer id="foot"></footer>
+</div>
+<script>
+const T={
+ fa:{brand:"دانلود برنامه‌ها",title:"دانلود برنامه‌ها",lead:"نسخه‌ی تازه‌ی هر برنامه اینجا آماده است. فقط دکمه‌ی دانلود را بزنید.",
+  download:"دانلود APK",version:"نسخه",date:"تاریخ",size:"حجم",downloads:"دانلود",windows:"نسخه‌ی ویندوز (آزمایشی)",
+  guide:"راهنمای نصب",older:"نسخه‌های قبلی",sha:"اثر انگشت فایل (SHA-256)",none:"هنوز نسخه‌ای منتشر نشده است.",
+  steps:["دکمه‌ی دانلود را بزنید و فایل APK را ذخیره کنید.","فایل را از قسمت دانلودهای گوشی باز کنید.","اگر اندروید پرسید، به مرورگر یا مدیر فایل اجازه‌ی «نصب برنامه‌های ناشناس» بدهید.","اگر Play Protect هشدار داد، «More details» و بعد «Install anyway» را بزنید. دلیلش این است که برنامه از Google Play نیست.","نصب را تأیید کنید و برنامه را باز کنید."],
+  upd:"بعد از نصب، آپدیت‌های بعدی را خود برنامه به شما اطلاع می‌دهد و داخل برنامه نصب می‌کند.",
+  wnote:"zip را کامل باز کنید و ByeByeRKN.exe را اجرا کنید. ویندوز اجازه‌ی ادمین می‌خواهد.",
+  source:"کد برنامه",updated:"به‌روزرسانی سایت",theme:["حالت روز","حالت شب"],other:"English",dir:"rtl"},
+ en:{brand:"Downloads",title:"Download apps",lead:"The latest version of each app is ready here. Just press the download button.",
+  download:"Download APK",version:"Version",date:"Date",size:"Size",downloads:"Downloads",windows:"Windows version (test)",
+  guide:"How to install",older:"Older versions",sha:"File fingerprint (SHA-256)",none:"No release yet.",
+  steps:["Press the download button and save the APK file.","Open the file from your phone's Downloads.","If Android asks, allow your browser or file manager to \"install unknown apps\".","If Play Protect warns, tap \"More details\", then \"Install anyway\". It warns because the app is not from Google Play.","Confirm the installation and open the app."],
+  upd:"After installing, the app tells you about later updates and installs them from inside the app.",
+  wnote:"Unzip the whole archive and run ByeByeRKN.exe. Windows asks for administrator rights.",
+  source:"Source code",updated:"Site updated",theme:["Day mode","Night mode"],other:"فارسی",dir:"ltr"}
+};
+const $=s=>document.querySelector(s);
+let lang=localStorage.lang||"fa", theme=localStorage.theme||"dark", data=null;
+const el=(tag,attrs={},...kids)=>{const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs)){if(k==="text")e.textContent=v;else e.setAttribute(k,v)}for(const k of kids)if(k)e.append(k);return e};
+const num=n=>new Intl.NumberFormat(lang).format(n);
+const mb=b=>num(Math.round(b/1048576*10)/10)+" MB";
+const day=d=>new Intl.DateTimeFormat(lang==="fa"?"fa-IR":"en-GB",{dateStyle:"medium"}).format(new Date(d));
+const shaOf=(r)=>null;
+function render(){
+  const t=T[lang];
+  document.documentElement.lang=lang;document.documentElement.dir=t.dir;document.documentElement.dataset.theme=theme;
+  document.title=t.title;
+  $("#brand").textContent=t.brand;$("#title").textContent=t.title;$("#lead").textContent=t.lead;
+  $("#theme").textContent=theme==="dark"?"☀ "+t.theme[0]:"☾ "+t.theme[1];
+  $("#lang").textContent=t.other;
+  const root=$("#apps");root.replaceChildren();
+  if(!data){return}
+  for(const app of data.apps){
+    const latest=app.releases[0];
+    const card=el("section",{class:"card"});
+    card.append(el("div",{class:"head"},el("img",{src:app.icon,alt:""}),el("div",{},el("h2",{text:app.name}),el("p",{text:app.tagline[lang]}))));
+    card.append(el("p",{class:"about",text:app.about[lang]}));
+    if(!latest){card.append(el("p",{class:"empty",text:t.none}));root.append(card);continue}
+    const apk=latest.assets.find(a=>a.name.endsWith(".apk"));
+    const sha=latest.assets.find(a=>a.name.endsWith(".sha256"));
+    const pill=(k,v)=>el("span",{class:"pill"},k+": ",el("b",{text:v}));
+    card.append(el("div",{class:"meta"},pill(t.version,latest.tag.replace(/^v/,"")),pill(t.date,day(latest.date)),apk&&pill(t.size,mb(apk.size)),apk&&pill(t.downloads,num(apk.downloads))));
+    if(apk)card.append(el("a",{class:"btn",href:apk.url,text:"⬇  "+t.download}));
+    if(app.windows&&app.windows.assets[0]){const w=app.windows.assets[0];card.append(el("a",{class:"btn alt",href:w.url,text:"🪟  "+t.windows+" · "+mb(w.size)}),el("p",{class:"note",text:t.wnote}))}
+    const guide=el("details",{},el("summary",{text:t.guide}),el("ol",{},...t.steps.map(s=>el("li",{text:s}))),el("p",{class:"note",text:t.upd}));
+    card.append(guide);
+    if(sha)card.append(el("details",{},el("summary",{text:t.sha}),el("p",{class:"note"},el("code",{id:"sha-"+app.repo.replace(/\W/g,""),text:"…"}))));
+    if(app.releases.length>1){
+      const list=el("details",{},el("summary",{text:t.older}));
+      for(const r of app.releases.slice(1)){const a=r.assets.find(x=>x.name.endsWith(".apk"));list.append(el("div",{class:"old"},el("span",{text:r.tag+" · "+day(r.date)}),a?el("a",{href:a.url,text:mb(a.size)+" ⬇"}):null))}
+      card.append(list);
+    }
+    card.append(el("p",{class:"note"},el("a",{href:app.repo_url,text:t.source})));
+    root.append(card);
+    if(sha)fetch(sha.url).then(r=>r.text()).then(x=>{const c=document.getElementById("sha-"+app.repo.replace(/\W/g,""));if(c)c.textContent=x.trim().split(/\s/)[0]}).catch(()=>{});
+  }
+  $("#foot").textContent=data?t.updated+": "+day(data.generated):"";
+}
+$("#theme").onclick=()=>{theme=theme==="dark"?"light":"dark";try{localStorage.theme=theme}catch(e){}render()};
+$("#lang").onclick=()=>{lang=lang==="fa"?"en":"fa";try{localStorage.lang=lang}catch(e){}render()};
+render();
+fetch("data.json",{cache:"no-cache"}).then(r=>r.json()).then(d=>{data=d;render()}).catch(()=>{});
+</script>
+</body>
+</html>

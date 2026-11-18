@@ -1,0 +1,16 @@
+[
+  {
+    "repo": "goney034/ByeByeRKN",
+    "name": "ByeByeRKN",
+    "icon": "icon.webp",
+    "tagline": {
+      "fa": "کلاینت اندروید Cloudflare WARP با رابط فارسی",
+      "en": "Cloudflare WARP client for Android with a Persian interface"
+    },
+    "about": {
+      "fa": "اتصال با WARP و AmneziaWG، حالت شب و روز، اتصال خودکار برای برنامه‌های انتخابی، نمایش دانلود و آپلود و آپدیت داخل برنامه.",
+      "en": "WARP and AmneziaWG connection, day/night mode, auto-connect for chosen apps, traffic counters and in-app updates."
+    },
+    "windows_tag": "windows-latest"
+  }
+]
