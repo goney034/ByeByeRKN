@@ -26,4 +26,8 @@
     <string name="autoapp_count">%1$d chosen</string>
     <string name="autoapp_channel">Auto-connect</string>
     <string name="autoapp_notification">Watching the chosen apps</string>
+    <string name="update_downloading">Downloading update… %1$d%%</string>
+    <string name="update_install">Install version %1$s</string>
+    <string name="update_failed">Download failed. Tap to open the release page</string>
+    <string name="update_allow_install">Allow ByeByeRKN to install apps, then tap the notice again</string>
 </resources>

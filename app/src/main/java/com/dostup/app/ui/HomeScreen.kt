@@ -70,11 +70,13 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dostup.app.BuildConfig
 import com.dostup.app.R
 import com.dostup.app.data.SplitMode
 import com.dostup.app.data.Store
 import com.dostup.app.split.AppCatalog
 import com.dostup.app.system.BackgroundWork
+import com.dostup.app.update.ApkInstaller
 import com.dostup.app.update.UpdateChecker
 import com.dostup.app.vpn.ExitInfo
 import com.dostup.app.vpn.Traffic
@@ -116,7 +118,7 @@ fun HomeScreen(
         SplitChip(store, openApps)
         newVersion?.let { version ->
             Spacer(Modifier.height(8.dp))
-            UpdateChip(version, updates.releasesUrl)
+            UpdateChip(version, updates.releasesUrl, BuildConfig.RELEASES_REPO)
         }
         if (backgroundAtRisk) {
             Spacer(Modifier.height(8.dp))
@@ -290,11 +292,22 @@ private fun SplitChip(store: Store, onClick: () -> Unit) {
 }
 
 @Composable
-private fun UpdateChip(version: String, url: String) {
+private fun UpdateChip(version: String, url: String, repo: String) {
     val context = LocalContext.current
-    HomeChip(Icons.Outlined.Info, stringResource(R.string.update_available, version)) {
-        // A phone can have no browser at all.
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+    val state by ApkInstaller.state.collectAsStateWithLifecycle()
+    val label = when (val s = state) {
+        is ApkInstaller.State.Downloading -> stringResource(R.string.update_downloading, s.percent)
+        is ApkInstaller.State.Ready -> stringResource(R.string.update_install, version)
+        ApkInstaller.State.Failed -> stringResource(R.string.update_failed)
+        ApkInstaller.State.Idle -> stringResource(R.string.update_available, version)
+    }
+    HomeChip(Icons.Outlined.Info, label) {
+        // Fork: download inside the app and install. When that fails, the release page is the way out.
+        if (state == ApkInstaller.State.Failed) {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+        } else {
+            ApkInstaller.onTap(context, repo, version)
+        }
     }
 }
 

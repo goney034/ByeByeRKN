@@ -54,7 +54,7 @@ class UpdateChecker(private val store: Store, private val repo: String, private 
     private companion object {
         const val TAG = "Dostup/Update"
         const val CALL_TIMEOUT_S = 20L
-        const val CHECK_EVERY_MS = 24 * 3600 * 1000L
+        const val CHECK_EVERY_MS = 3 * 3600 * 1000L // fork: a new release shows up within hours, not a day
     }
 }
 

@@ -26,4 +26,8 @@
     <string name="autoapp_count">%1$d برنامه انتخاب شده</string>
     <string name="autoapp_channel">اتصال خودکار</string>
     <string name="autoapp_notification">در حال پایش برنامه‌های انتخابی</string>
+    <string name="update_downloading">در حال دانلود آپدیت… %1$d٪</string>
+    <string name="update_install">نصب نسخه‌ی %1$s</string>
+    <string name="update_failed">دانلود ناموفق بود. برای باز کردن صفحه‌ی ریلیز بزنید</string>
+    <string name="update_allow_install">به ByeByeRKN اجازه‌ی نصب برنامه بدهید و دوباره روی نوار بزنید</string>
 </resources>

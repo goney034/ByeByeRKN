@@ -27,4 +27,8 @@
     <string name="autoapp_count">Выбрано: %1$d</string>
     <string name="autoapp_channel">Авто‑подключение</string>
     <string name="autoapp_notification">Слежу за выбранными приложениями</string>
+    <string name="update_downloading">Загрузка обновления… %1$d%%</string>
+    <string name="update_install">Установить версию %1$s</string>
+    <string name="update_failed">Не удалось скачать. Нажмите, чтобы открыть страницу релиза</string>
+    <string name="update_allow_install">Разрешите ByeByeRKN устанавливать приложения и нажмите на плашку ещё раз</string>
 </resources>

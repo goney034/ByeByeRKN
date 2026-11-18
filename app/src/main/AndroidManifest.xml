@@ -17,6 +17,8 @@
     <!-- Fork: see which app is in front, to connect the VPN for chosen apps (granted by the user as "usage access"). -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Fork: install the update that the app downloaded itself. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- Launchable apps for the split-tunnel picker, without QUERY_ALL_PACKAGES. -->
